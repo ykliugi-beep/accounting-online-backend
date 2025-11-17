@@ -1,8 +1,9 @@
 using ERPAccounting.Application.DTOs;
 using ERPAccounting.Application.Services;
 using ERPAccounting.Application.Validators;
-using ERPAccounting.Infrastructure.Services;
+using ERPAccounting.Infrastructure.Data;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IDocumentLineItemService, DocumentLineItemService>();
 builder.Services.AddScoped<IValidator<CreateLineItemDto>, CreateLineItemValidator>();
@@ -27,6 +36,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
