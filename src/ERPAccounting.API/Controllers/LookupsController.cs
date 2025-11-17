@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ERPAccounting.Infrastructure.Services;
+using ERPAccounting.Application.Services;
 using ERPAccounting.Application.DTOs;
 
 namespace ERPAccounting.API.Controllers

@@ -1,6 +1,6 @@
 using ERPAccounting.Application.DTOs;
 
-namespace ERPAccounting.Infrastructure.Services
+namespace ERPAccounting.Application.Services
 {
     /// <summary>
     /// Interfejs za Stored Procedures servis

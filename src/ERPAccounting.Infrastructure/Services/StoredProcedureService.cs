@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ERPAccounting.Infrastructure.Data;
 using ERPAccounting.Application.DTOs;
+using ERPAccounting.Application.Services;
 
 namespace ERPAccounting.Infrastructure.Services
 {
