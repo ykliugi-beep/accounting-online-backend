@@ -14,14 +14,14 @@ namespace ERPAccounting.API.Controllers
     [Authorize]
     public class LookupsController : ControllerBase
     {
-        private readonly IStoredProcedureService _spService;
+        private readonly ILookupService _lookupService;
         private readonly ILogger<LookupsController> _logger;
 
         public LookupsController(
-            IStoredProcedureService spService,
+            ILookupService lookupService,
             ILogger<LookupsController> logger)
         {
-            _spService = spService;
+            _lookupService = lookupService;
             _logger = logger;
         }
 
@@ -37,7 +37,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetPartnerComboAsync();
+                var result = await _lookupService.GetPartnerComboAsync();
                 _logger.LogInformation("Partners loaded: {Count}", result.Count);
                 return Ok(result);
             }
@@ -61,7 +61,7 @@ namespace ERPAccounting.API.Controllers
             try
             {
                 docTypeId = docTypeId ?? "UR"; // Default
-                var result = await _spService.GetOrgUnitsComboAsync(docTypeId);
+                var result = await _lookupService.GetOrgUnitsComboAsync(docTypeId);
                 _logger.LogInformation("Organizational units loaded for {DocType}: {Count}", docTypeId, result.Count);
                 return Ok(result);
             }
@@ -84,7 +84,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetTaxationMethodsComboAsync();
+                var result = await _lookupService.GetTaxationMethodsComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -106,7 +106,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetReferentsComboAsync();
+                var result = await _lookupService.GetReferentsComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -128,7 +128,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetDocumentNDComboAsync();
+                var result = await _lookupService.GetDocumentNDComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -150,7 +150,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetTaxRatesComboAsync();
+                var result = await _lookupService.GetTaxRatesComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -172,7 +172,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetArticlesComboAsync();
+                var result = await _lookupService.GetArticlesComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -194,7 +194,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetDocumentCostsListAsync(documentId);
+                var result = await _lookupService.GetDocumentCostsListAsync(documentId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -216,7 +216,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetCostTypesComboAsync();
+                var result = await _lookupService.GetCostTypesComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -238,7 +238,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetCostDistributionMethodsComboAsync();
+                var result = await _lookupService.GetCostDistributionMethodsComboAsync();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -260,7 +260,7 @@ namespace ERPAccounting.API.Controllers
         {
             try
             {
-                var result = await _spService.GetCostArticlesComboAsync(documentId);
+                var result = await _lookupService.GetCostArticlesComboAsync(documentId);
                 return Ok(result);
             }
             catch (Exception ex)
