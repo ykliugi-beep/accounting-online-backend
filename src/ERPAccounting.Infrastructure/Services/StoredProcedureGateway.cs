@@ -156,6 +156,21 @@ public class StoredProcedureGateway : IStoredProcedureGateway
         }
     }
 
+    public async Task<List<CostDistributionMethodComboDto>> GetCostDistributionMethodsComboAsync()
+    {
+        try
+        {
+            return await _context.Database
+                .SqlQueryRaw<CostDistributionMethodComboDto>("EXEC spNacinDeljenjaTroskovaCombo")
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Greška pri izvršavanju spNacinDeljenjaTroskovaCombo", ex);
+        }
+    }
+
     public async Task<List<CostArticleComboDto>> GetCostArticlesComboAsync(int documentId)
     {
         try

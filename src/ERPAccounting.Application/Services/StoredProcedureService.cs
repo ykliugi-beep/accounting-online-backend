@@ -44,12 +44,7 @@ namespace ERPAccounting.Application.Services
             => _gateway.GetCostTypesComboAsync();
 
         public Task<List<CostDistributionMethodComboDto>> GetCostDistributionMethodsComboAsync()
-            => Task.FromResult(new List<CostDistributionMethodComboDto>
-            {
-                new() { Id = 1, Naziv = "Po količini", Opis = "Raspodela proporcionalno količini" },
-                new() { Id = 2, Naziv = "Po vrednosti", Opis = "Raspodela proporcionalno vrednosti" },
-                new() { Id = 3, Naziv = "Ručno", Opis = "Ručno unošenje raspodele" }
-            });
+            => _gateway.GetCostDistributionMethodsComboAsync();
 
         public Task<List<CostArticleComboDto>> GetCostArticlesComboAsync(int documentId)
             => _gateway.GetCostArticlesComboAsync(documentId);

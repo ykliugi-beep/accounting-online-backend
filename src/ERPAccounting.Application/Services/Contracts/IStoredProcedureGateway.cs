@@ -18,5 +18,6 @@ public interface IStoredProcedureGateway
     Task<List<ArticleComboDto>> GetArticlesComboAsync();
     Task<List<DocumentCostsListDto>> GetDocumentCostsListAsync(int documentId);
     Task<List<CostTypeComboDto>> GetCostTypesComboAsync();
+    Task<List<CostDistributionMethodComboDto>> GetCostDistributionMethodsComboAsync();
     Task<List<CostArticleComboDto>> GetCostArticlesComboAsync(int documentId);
 }

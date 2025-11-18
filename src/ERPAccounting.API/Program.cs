@@ -7,6 +7,7 @@ using ERPAccounting.Application.Validators;
 using ERPAccounting.Infrastructure.Data;
 using ERPAccounting.Infrastructure.Extensions;
 using ERPAccounting.Infrastructure.Repositories;
+using ERPAccounting.Infrastructure.Services;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IDocumentCostService, DocumentCostService>();
 builder.Services.AddScoped<IDocumentLineItemService, DocumentLineItemService>();
+builder.Services.AddScoped<IStoredProcedureService, StoredProcedureService>();
+builder.Services.AddScoped<IStoredProcedureGateway, StoredProcedureGateway>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("ERPAccounting"));
 builder.Services.AddScoped<IDocumentLineItemRepository, DocumentLineItemRepository>();
