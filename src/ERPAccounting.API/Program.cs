@@ -1,5 +1,6 @@
 using ERPAccounting.API.Middleware;
 using ERPAccounting.Application.DTOs;
+using ERPAccounting.Application.DTOs.Costs;
 using ERPAccounting.Application.Services;
 using ERPAccounting.Application.Validators;
 using ERPAccounting.Common.Extensions;
@@ -19,6 +20,10 @@ builder.Services.AddScoped<IDocumentCostService, DocumentCostService>();
 builder.Services.AddScoped<IDocumentLineItemService, DocumentLineItemService>();
 builder.Services.AddScoped<IValidator<CreateLineItemDto>, CreateLineItemValidator>();
 builder.Services.AddScoped<IValidator<PatchLineItemDto>, PatchLineItemValidator>();
+builder.Services.AddScoped<IValidator<CreateDocumentCostDto>, CreateDocumentCostValidator>();
+builder.Services.AddScoped<IValidator<UpdateDocumentCostDto>, UpdateDocumentCostValidator>();
+builder.Services.AddScoped<IValidator<CreateDocumentCostItemDto>, CreateDocumentCostItemValidator>();
+builder.Services.AddScoped<IValidator<PatchDocumentCostItemDto>, PatchDocumentCostItemValidator>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();

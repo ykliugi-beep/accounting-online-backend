@@ -20,6 +20,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IDocumentLineItemRepository, DocumentLineItemRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IDocumentCostRepository, DocumentCostRepository>();
+        services.AddScoped<IDocumentCostItemRepository, DocumentCostItemRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IStoredProcedureGateway, StoredProcedureGateway>();
 

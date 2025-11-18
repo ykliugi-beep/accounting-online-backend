@@ -12,5 +12,9 @@ public interface IUnitOfWork
 
     IDocumentRepository Documents { get; }
 
+    IDocumentCostRepository DocumentCosts { get; }
+
+    IDocumentCostItemRepository DocumentCostItems { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
