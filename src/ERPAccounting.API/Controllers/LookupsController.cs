@@ -2,7 +2,6 @@ using ERPAccounting.Application.DTOs;
 using ERPAccounting.Application.Services;
 using ERPAccounting.Common.Constants;
 using ERPAccounting.Common.Exceptions;
-using ERPAccounting.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -20,14 +19,17 @@ namespace ERPAccounting.API.Controllers
     [Authorize]
     public class LookupsController : ControllerBase
     {
-        private readonly IStoredProcedureService _storedProcedureService;
+        private readonly ILookupService _lookupService;
+        private readonly IStoredProcedureService _spService;
         private readonly ILogger<LookupsController> _logger;
 
         public LookupsController(
-            IStoredProcedureService storedProcedureService,
+            ILookupService lookupService,
+            IStoredProcedureService spService,
             ILogger<LookupsController> logger)
         {
-            _storedProcedureService = storedProcedureService;
+            _lookupService = lookupService;
+            _spService = spService;
             _logger = logger;
         }
 
@@ -36,7 +38,7 @@ namespace ERPAccounting.API.Controllers
         public Task<ActionResult<List<PartnerComboDto>>> GetPartners()
             => ExecuteLookupAsync(async () =>
             {
-                var result = await _storedProcedureService.GetPartnerComboAsync();
+                var result = await _lookupService.GetPartnerComboAsync();
                 _logger.LogInformation("Partners loaded: {Count}", result.Count);
                 return result;
             }, "partnera");
@@ -47,7 +49,7 @@ namespace ERPAccounting.API.Controllers
             => ExecuteLookupAsync(async () =>
             {
                 docTypeId ??= "UR";
-                var result = await _lookupService.GetOrgUnitsComboAsync(docTypeId);
+                var result = await _spService.GetOrgUnitsComboAsync(docTypeId);
                 _logger.LogInformation("Organizational units loaded for {DocType}: {Count}", docTypeId, result.Count);
                 return result;
             }, "organizacionih jedinica");
@@ -55,50 +57,50 @@ namespace ERPAccounting.API.Controllers
         [HttpGet(ApiRoutes.Lookups.TaxationMethods)]
         [ProducesResponseType(typeof(List<TaxationMethodComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<TaxationMethodComboDto>>> GetTaxationMethods()
-            => ExecuteLookupAsync(_lookupService.GetTaxationMethodsComboAsync, "načina oporezivanja");
+            => ExecuteLookupAsync(_spService.GetTaxationMethodsComboAsync, "načina oporezivanja");
 
         [HttpGet(ApiRoutes.Lookups.Referents)]
         [ProducesResponseType(typeof(List<ReferentComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<ReferentComboDto>>> GetReferents()
-            => ExecuteLookupAsync(_lookupService.GetReferentsComboAsync, "referenata");
+            => ExecuteLookupAsync(_spService.GetReferentsComboAsync, "referenata");
 
         [HttpGet(ApiRoutes.Lookups.DocumentsNd)]
         [ProducesResponseType(typeof(List<DocumentNDComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<DocumentNDComboDto>>> GetDocumentsND()
-            => ExecuteLookupAsync(_lookupService.GetDocumentNDComboAsync, "ND dokumenata");
+            => ExecuteLookupAsync(_spService.GetDocumentNDComboAsync, "ND dokumenata");
 
         [HttpGet(ApiRoutes.Lookups.TaxRates)]
         [ProducesResponseType(typeof(List<TaxRateComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<TaxRateComboDto>>> GetTaxRates()
-            => ExecuteLookupAsync(_lookupService.GetTaxRatesComboAsync, "poreskih stopa");
+            => ExecuteLookupAsync(_spService.GetTaxRatesComboAsync, "poreskih stopa");
 
         [HttpGet(ApiRoutes.Lookups.Articles)]
         [ProducesResponseType(typeof(List<ArticleComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<ArticleComboDto>>> GetArticles()
-            => ExecuteLookupAsync(_lookupService.GetArticlesComboAsync, "artikala");
+            => ExecuteLookupAsync(_spService.GetArticlesComboAsync, "artikala");
 
         [HttpGet(ApiRoutes.Lookups.DocumentCosts)]
         [ProducesResponseType(typeof(List<DocumentCostsListDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<DocumentCostsListDto>>> GetDocumentCosts(int documentId)
-            => ExecuteLookupAsync(() => _lookupService.GetDocumentCostsListAsync(documentId), "troškova");
+            => ExecuteLookupAsync(() => _spService.GetDocumentCostsListAsync(documentId), "troškova");
 
         [HttpGet(ApiRoutes.Lookups.CostTypes)]
         [ProducesResponseType(typeof(List<CostTypeComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<CostTypeComboDto>>> GetCostTypes()
-            => ExecuteLookupAsync(_lookupService.GetCostTypesComboAsync, "vrsta troškova");
+            => ExecuteLookupAsync(_spService.GetCostTypesComboAsync, "vrsta troškova");
 
         [HttpGet(ApiRoutes.Lookups.CostDistributionMethods)]
         [ProducesResponseType(typeof(List<CostDistributionMethodComboDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<CostDistributionMethodComboDto>>> GetCostDistributionMethods()
         {
-            var result = await _lookupService.GetCostDistributionMethodsComboAsync();
+            var result = await _spService.GetCostDistributionMethodsComboAsync();
             return Ok(result);
         }
 
         [HttpGet(ApiRoutes.Lookups.CostArticles)]
         [ProducesResponseType(typeof(List<CostArticleComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<CostArticleComboDto>>> GetCostArticles(int documentId)
-            => ExecuteLookupAsync(() => _lookupService.GetCostArticlesComboAsync(documentId), "artikala za troškove");
+            => ExecuteLookupAsync(() => _spService.GetCostArticlesComboAsync(documentId), "artikala za troškove");
 
         private async Task<ActionResult<List<T>>> ExecuteLookupAsync<T>(Func<Task<List<T>>> action, string resourceName)
         {
