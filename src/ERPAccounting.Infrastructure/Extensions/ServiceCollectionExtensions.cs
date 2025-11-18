@@ -1,3 +1,4 @@
+using System;
 using ERPAccounting.Domain.Abstractions.Gateways;
 using ERPAccounting.Domain.Abstractions.Repositories;
 using ERPAccounting.Infrastructure.Data;
@@ -11,19 +12,23 @@ namespace ERPAccounting.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    private const string DefaultInMemoryDatabaseName = "ERPAccounting";
-
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "DefaultConnection is not configured. Please define it in appsettings.json as described in the documentation.");
+        }
+
         services.AddDbContext<AppDbContext>(options =>
         {
-            var databaseName = configuration.GetValue(
-                "Infrastructure:InMemoryDatabaseName",
-                DefaultInMemoryDatabaseName);
-
-            options.UseInMemoryDatabase(databaseName);
+            options.UseSqlServer(connectionString, sqlOptions =>
+            {
+                sqlOptions.EnableRetryOnFailure();
+            });
         });
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
