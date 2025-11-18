@@ -1,7 +1,7 @@
 using ERPAccounting.Application.DTOs;
+using ERPAccounting.Application.Services;
 using ERPAccounting.Common.Constants;
 using ERPAccounting.Common.Exceptions;
-using ERPAccounting.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -20,13 +20,16 @@ namespace ERPAccounting.API.Controllers
     public class LookupsController : ControllerBase
     {
         private readonly ILookupService _lookupService;
+        private readonly IStoredProcedureService _spService;
         private readonly ILogger<LookupsController> _logger;
 
         public LookupsController(
             ILookupService lookupService,
+            IStoredProcedureService spService,
             ILogger<LookupsController> logger)
         {
             _lookupService = lookupService;
+            _spService = spService;
             _logger = logger;
         }
 

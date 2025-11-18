@@ -1,20 +1,25 @@
-using Microsoft.EntityFrameworkCore;
-using ERPAccounting.Infrastructure.Data;
 using ERPAccounting.Application.DTOs;
+using ERPAccounting.Application.Services;
+using ERPAccounting.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
-namespace ERPAccounting.Application.Services
+namespace ERPAccounting.Infrastructure.Services
 {
     /// <summary>
     /// Servis za sve 11 Stored Procedures koji vraćaju combo podatke
     /// OBAVEZNO: Sve SP-ove moraju biti dostupne u bazi!
     /// </summary>
-    public class StoredProcedureService : ILookupService
+    public class StoredProcedureService : ILookupService, IStoredProcedureService
     {
         private readonly AppDbContext _context;
+        private readonly CacheService _cacheService;
+        private static readonly TimeSpan CostDistributionCacheDuration = TimeSpan.FromHours(24);
+        private const string CostDistributionCacheKey = "lookups:cost-distribution-methods";
 
-        public StoredProcedureService(AppDbContext context)
+        public StoredProcedureService(AppDbContext context, CacheService cacheService)
         {
             _context = context;
+            _cacheService = cacheService;
         }
 
         // ══════════════════════════════════════════════════
@@ -225,12 +230,15 @@ namespace ERPAccounting.Application.Services
         /// </summary>
         public async Task<List<CostDistributionMethodComboDto>> GetCostDistributionMethodsComboAsync()
         {
-            return await Task.FromResult(new List<CostDistributionMethodComboDto>
-            {
-                new() { Id = 1, Naziv = "Po količini", Opis = "Raspodela proporcionalno količini" },
-                new() { Id = 2, Naziv = "Po vrednosti", Opis = "Raspodela proporcionalno vrednosti" },
-                new() { Id = 3, Naziv = "Ručno", Opis = "Ručno unošenje raspodele" }
-            });
+            return await _cacheService.GetOrCreateAsync(
+                CostDistributionCacheKey,
+                () => Task.FromResult(new List<CostDistributionMethodComboDto>
+                {
+                    new() { Id = 1, Naziv = "Po količini", Opis = "Raspodela proporcionalno količini" },
+                    new() { Id = 2, Naziv = "Po vrednosti", Opis = "Raspodela proporcionalno vrednosti" },
+                    new() { Id = 3, Naziv = "Ručno", Opis = "Ručno unošenje raspodele" }
+                }),
+                CostDistributionCacheDuration);
         }
 
         // ══════════════════════════════════════════════════
