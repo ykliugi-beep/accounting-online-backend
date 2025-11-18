@@ -87,13 +87,22 @@ namespace ERPAccounting.Application.Services
 
             if (entity is null)
             {
-                throw new KeyNotFoundException("Stavka nije pronađena");
+                throw new NotFoundException(ErrorMessages.DocumentLineItemNotFound, itemId.ToString(), nameof(DocumentLineItem));
             }
 
             if (entity.StavkaDokumentaTimeStamp is null || !entity.StavkaDokumentaTimeStamp.SequenceEqual(expectedRowVersion))
             {
                 _logger.LogWarning("RowVersion mismatch for item {ItemId}", itemId);
-                throw new DbUpdateConcurrencyException("RowVersion mismatch");
+                var currentEtag = entity.StavkaDokumentaTimeStamp is null
+                    ? string.Empty
+                    : Convert.ToBase64String(entity.StavkaDokumentaTimeStamp);
+                var expectedEtag = Convert.ToBase64String(expectedRowVersion);
+                throw new ConflictException(
+                    ErrorMessages.ConcurrencyConflict,
+                    itemId.ToString(),
+                    nameof(DocumentLineItem),
+                    expectedEtag,
+                    currentEtag);
             }
 
             ApplyPatch(entity, dto);
@@ -105,13 +114,13 @@ namespace ERPAccounting.Application.Services
             return MapToDto(entity);
         }
 
-        public async Task<bool> DeleteAsync(int documentId, int itemId)
+        public async Task DeleteAsync(int documentId, int itemId)
         {
             var entity = await _lineItemRepository.GetAsync(documentId, itemId, track: true);
 
             if (entity is null)
             {
-                return false;
+                throw new NotFoundException(ErrorMessages.DocumentLineItemNotFound, itemId.ToString(), nameof(DocumentLineItem));
             }
 
             entity.IsDeleted = true;
@@ -169,7 +178,7 @@ namespace ERPAccounting.Application.Services
 
             if (!exists)
             {
-                throw new KeyNotFoundException("Dokument nije pronađen");
+                throw new NotFoundException(ErrorMessages.DocumentNotFound, documentId.ToString(), nameof(Document));
             }
         }
 
@@ -178,7 +187,13 @@ namespace ERPAccounting.Application.Services
             var validationResult = await validator.ValidateAsync(instance);
             if (!validationResult.IsValid)
             {
-                throw new ValidationException(validationResult.Errors);
+                var errors = validationResult.Errors
+                    .GroupBy(failure => failure.PropertyName ?? string.Empty)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.Select(failure => failure.ErrorMessage).ToArray());
+
+                throw new ValidationException(ErrorMessages.ValidationFailed, errors);
             }
         }
 

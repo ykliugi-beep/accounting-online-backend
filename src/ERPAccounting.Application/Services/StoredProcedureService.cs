@@ -1,15 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using ERPAccounting.Infrastructure.Data;
 using ERPAccounting.Application.DTOs;
-using ERPAccounting.Application.Services;
 
-namespace ERPAccounting.Infrastructure.Services
+namespace ERPAccounting.Application.Services
 {
     /// <summary>
     /// Servis za sve 11 Stored Procedures koji vraćaju combo podatke
     /// OBAVEZNO: Sve SP-ove moraju biti dostupne u bazi!
     /// </summary>
-    public class StoredProcedureService : IStoredProcedureService
+    public class StoredProcedureService : ILookupService
     {
         private readonly AppDbContext _context;
 

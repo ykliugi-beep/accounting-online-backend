@@ -49,5 +49,6 @@ public class DocumentCost : BaseEntity
     
     // Navigation
     public virtual Document Document { get; set; } = null!;
-    public virtual ICollection<DocumentCostLineItem> LineItems { get; set; } = new List<DocumentCostLineItem>();
+
+    public virtual ICollection<DocumentCostLineItem> CostLineItems { get; set; } = new List<DocumentCostLineItem>();
 }

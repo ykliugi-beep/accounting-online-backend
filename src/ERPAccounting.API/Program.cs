@@ -1,4 +1,6 @@
+using ERPAccounting.API.Middleware;
 using ERPAccounting.Application.DTOs;
+using ERPAccounting.Application.DTOs.LineItems;
 using ERPAccounting.Application.Services;
 using ERPAccounting.Application.Services.Contracts;
 using ERPAccounting.Application.Validators;
@@ -15,6 +17,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IDocumentCostService, DocumentCostService>();
 builder.Services.AddScoped<IDocumentLineItemService, DocumentLineItemService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("ERPAccounting"));
@@ -27,6 +31,8 @@ builder.Services.AddScoped<IStoredProcedureService, StoredProcedureService>();
 
 var app = builder.Build();
 
+app.UseDomainExceptionHandling();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -34,7 +40,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<TenantResolutionMiddleware>();
+
 app.UseHttpsRedirection();
+
+app.UseAuthorization();
 
 app.MapControllers();
 

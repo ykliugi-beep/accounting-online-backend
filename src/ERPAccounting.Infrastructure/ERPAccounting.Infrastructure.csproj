@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ERPAccounting.Domain\ERPAccounting.Domain.csproj" />
-    <ProjectReference Include="..\ERPAccounting.Application\ERPAccounting.Application.csproj" />
+    <ProjectReference Include="..\ERPAccounting.Common\ERPAccounting.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -11,6 +11,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Services\" />
   </ItemGroup>
 
   <PropertyGroup>
