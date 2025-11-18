@@ -2,11 +2,12 @@ using ERPAccounting.API.Middleware;
 using ERPAccounting.Application.DTOs;
 using ERPAccounting.Application.DTOs.LineItems;
 using ERPAccounting.Application.Services;
+using ERPAccounting.Application.Services.Contracts;
 using ERPAccounting.Application.Validators;
-using ERPAccounting.Common.Extensions;
-using ERPAccounting.Infrastructure.Services;
+using ERPAccounting.Infrastructure.Data;
+using ERPAccounting.Infrastructure.Repositories;
 using FluentValidation;
-using ERPAccounting.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +20,11 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IDocumentCostService, DocumentCostService>();
 builder.Services.AddScoped<IDocumentLineItemService, DocumentLineItemService>();
-builder.Services.AddScoped<ILookupService, StoredProcedureService>();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseInMemoryDatabase("ERPAccounting"));
+builder.Services.AddScoped<IDocumentLineItemRepository, DocumentLineItemRepository>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IValidator<CreateLineItemDto>, CreateLineItemValidator>();
 builder.Services.AddScoped<IValidator<PatchLineItemDto>, PatchLineItemValidator>();
 builder.Services.AddScoped<IStoredProcedureService, StoredProcedureService>();
