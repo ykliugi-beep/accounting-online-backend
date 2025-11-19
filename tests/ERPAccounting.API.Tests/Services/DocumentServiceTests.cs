@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
+using DomainValidationException = ERPAccounting.Common.Exceptions.ValidationException;
+
 namespace ERPAccounting.API.Tests.Services;
 
 public class DocumentServiceTests
@@ -64,7 +66,7 @@ public class DocumentServiceTests
         var validator = CreateFailingValidator<CreateDocumentDto>();
         var service = CreateService(repositoryMock, unitOfWorkMock, createValidator: validator);
 
-        await Assert.ThrowsAsync<ValidationException>(() => service.CreateDocumentAsync(CreateDto));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.CreateDocumentAsync(CreateDto));
     }
 
     [Fact]
