@@ -61,18 +61,19 @@ public class DocumentCostService : IDocumentCostService
     {
         await ValidateAsync(_createCostValidator, dto);
         await EnsureDocumentExistsAsync(documentId);
+        var documentTypeCode = dto.DocumentTypeCode.Trim();
 
         var entity = new DocumentCost
         {
             IDDokument = documentId,
-            IDPartner = dto.CostTypeId,
+            IDPartner = dto.PartnerId,
+            IDVrstaDokumenta = documentTypeCode,
             IznosBezPDV = dto.AmountNet,
             IznosPDV = dto.AmountVat,
             DatumValute = dto.DueDate,
             Opis = dto.Description,
             DatumDPO = DateTime.UtcNow,
-            IDVrstaDokumenta = "ZT",
-            BrojDokumenta = $"ZT-{documentId}-{DateTime.UtcNow.Ticks}",
+            BrojDokumenta = $"{documentTypeCode}-{documentId}-{DateTime.UtcNow.Ticks}",
             IDStatus = 1,
             NazivTroska = null
         };
@@ -90,8 +91,10 @@ public class DocumentCostService : IDocumentCostService
         var entity = await EnsureCostExistsAsync(documentId, costId, track: true);
 
         EnsureRowVersion(entity.DokumentTroskoviTimeStamp, expectedRowVersion, costId, nameof(DocumentCost));
+        var documentTypeCode = dto.DocumentTypeCode.Trim();
 
-        entity.IDPartner = dto.CostTypeId;
+        entity.IDPartner = dto.PartnerId;
+        entity.IDVrstaDokumenta = documentTypeCode;
         entity.IznosBezPDV = dto.AmountNet;
         entity.IznosPDV = dto.AmountVat;
         entity.DatumValute = dto.DueDate;
@@ -374,7 +377,7 @@ public class DocumentCostService : IDocumentCostService
             entity.IDDokumentTroskovi,
             entity.IDDokument,
             entity.IDPartner,
-            entity.NazivTroska ?? entity.IDVrstaDokumenta,
+            entity.IDVrstaDokumenta,
             entity.IznosBezPDV,
             entity.IznosPDV,
             entity.DatumValute ?? entity.DatumDPO,

@@ -19,6 +19,7 @@ public class DocumentCostServiceTests
         var costItemRepo = new Mock<IDocumentCostItemRepository>();
         var documentRepo = new Mock<IDocumentRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
+        DocumentCost? persistedEntity = null;
 
         documentRepo.Setup(r => r.ExistsAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -28,6 +29,7 @@ public class DocumentCostServiceTests
             {
                 entity.IDDokumentTroskovi = 7;
                 entity.DokumentTroskoviTimeStamp = new byte[] { 1, 2, 3, 4 };
+                persistedEntity = entity;
             })
             .Returns(Task.CompletedTask);
 
@@ -36,12 +38,17 @@ public class DocumentCostServiceTests
 
         var service = CreateService(costRepo, costItemRepo, documentRepo, unitOfWork);
 
-        var dto = new CreateDocumentCostDto(3, 150, 30, DateTime.UtcNow, "Trošak");
+        var dto = new CreateDocumentCostDto(3, "ZT", 150, 30, DateTime.UtcNow, "Trošak");
         var result = await service.CreateCostAsync(1, dto);
 
         Assert.Equal(7, result.Id);
         Assert.Equal(150, result.AmountNet);
         Assert.Equal(30, result.AmountVat);
+        Assert.Equal(3, result.PartnerId);
+        Assert.Equal("ZT", result.DocumentTypeCode);
+        Assert.NotNull(persistedEntity);
+        Assert.Equal(dto.PartnerId, persistedEntity!.IDPartner);
+        Assert.Equal(dto.DocumentTypeCode, persistedEntity.IDVrstaDokumenta);
         Assert.Equal("AQIDBA==", result.ETag);
         costRepo.Verify(r => r.AddAsync(It.IsAny<DocumentCost>(), It.IsAny<CancellationToken>()), Times.Once);
         unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -68,7 +75,7 @@ public class DocumentCostServiceTests
         var service = CreateService(costRepo, costItemRepo, documentRepo, unitOfWork);
 
         await Assert.ThrowsAsync<ConflictException>(() =>
-            service.UpdateCostAsync(1, 2, new byte[] { 9 }, new UpdateDocumentCostDto(3, 100, 10, DateTime.UtcNow, null)));
+            service.UpdateCostAsync(1, 2, new byte[] { 9 }, new UpdateDocumentCostDto(3, "ZT", 100, 10, DateTime.UtcNow, null)));
     }
 
     [Fact]

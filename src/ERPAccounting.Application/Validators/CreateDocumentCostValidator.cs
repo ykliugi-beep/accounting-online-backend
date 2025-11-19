@@ -7,8 +7,12 @@ public class CreateDocumentCostValidator : AbstractValidator<CreateDocumentCostD
 {
     public CreateDocumentCostValidator()
     {
-        RuleFor(x => x.CostTypeId)
-            .GreaterThan(0).WithMessage("CostTypeId mora biti veći od nule");
+        RuleFor(x => x.PartnerId)
+            .GreaterThan(0).WithMessage("PartnerId mora biti veći od nule");
+
+        RuleFor(x => x.DocumentTypeCode)
+            .NotEmpty().WithMessage("DocumentTypeCode je obavezan")
+            .Length(2).WithMessage("DocumentTypeCode mora imati tačno 2 karaktera");
 
         RuleFor(x => x.AmountNet)
             .GreaterThan(0).WithMessage("AmountNet mora biti veći od nule");

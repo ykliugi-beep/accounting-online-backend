@@ -16,7 +16,7 @@ public class DocumentCostsControllerTests
     {
         var serviceMock = new Mock<IDocumentCostService>();
         serviceMock.Setup(s => s.GetCostByIdAsync(1, 2))
-            .ReturnsAsync(new DocumentCostDto(2, 1, 10, "Transport", 100, 20, DateTime.UtcNow, null, "etag-cost"));
+            .ReturnsAsync(new DocumentCostDto(2, 1, 10, "ZT", 100, 20, DateTime.UtcNow, null, "etag-cost"));
 
         var controller = CreateController(serviceMock.Object);
 

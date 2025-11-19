@@ -4,7 +4,8 @@ namespace ERPAccounting.Application.DTOs.Costs;
 /// DTO za ažuriranje zavisnog troška
 /// </summary>
 public record UpdateDocumentCostDto(
-    int CostTypeId,
+    int PartnerId,
+    string DocumentTypeCode,
     decimal AmountNet,
     decimal AmountVat,
     DateTime DueDate,

@@ -6,8 +6,8 @@ namespace ERPAccounting.Application.DTOs.Costs;
 public record DocumentCostDto(
     int Id,
     int DocumentId,
-    int CostTypeId,
-    string CostTypeName,
+    int PartnerId,
+    string DocumentTypeCode,
     decimal AmountNet,
     decimal AmountVat,
     DateTime DueDate,

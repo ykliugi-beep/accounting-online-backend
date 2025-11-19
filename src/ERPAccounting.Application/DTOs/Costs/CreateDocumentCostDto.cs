@@ -4,7 +4,8 @@ namespace ERPAccounting.Application.DTOs.Costs;
 /// DTO za kreiranje zavisnog troška
 /// </summary>
 public record CreateDocumentCostDto(
-    int CostTypeId,
+    int PartnerId,
+    string DocumentTypeCode,
     decimal AmountNet,
     decimal AmountVat,
     DateTime DueDate,
