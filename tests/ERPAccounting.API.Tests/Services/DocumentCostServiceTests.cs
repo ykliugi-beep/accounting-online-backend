@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
+using DomainValidationException = ERPAccounting.Common.Exceptions.ValidationException;
+
 namespace ERPAccounting.API.Tests.Services;
 
 public class DocumentCostServiceTests
@@ -114,7 +116,7 @@ public class DocumentCostServiceTests
 
         var service = CreateService(costRepo, costItemRepo, documentRepo, unitOfWork);
 
-        await Assert.ThrowsAsync<ValidationException>(() =>
+        await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.DistributeCostAsync(1, 2, new CostDistributionRequestDto(3, null)));
     }
 
