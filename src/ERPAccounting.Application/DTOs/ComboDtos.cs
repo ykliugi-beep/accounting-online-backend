@@ -2,16 +2,23 @@ namespace ERPAccounting.Application.DTOs
 {
     // ══════════════════════════════════════════════════
     // SP 1: spPartnerComboStatusNabavka
+    // FIXED: Dodato 5 nedostajućih atributa
     public record PartnerComboDto(
         int IdPartner,
         string NazivPartnera,
         string? Mesto,
-        string? Sifra,
-        int Status
+        string? Opis,                    // Status description - NOVO!
+        int IdStatus,
+        int? IdNacinOporezivanjaNabavka, // NOVO!
+        short ObracunAkciza,             // NOVO!
+        short ObracunPorez,              // NOVO!
+        int? IdReferent,                 // NOVO!
+        string? Sifra
     );
 
     // ══════════════════════════════════════════════════
     // SP 2: spOrganizacionaJedinicaCombo
+    // OK - bez izmena
     public record OrgUnitComboDto(
         int IdOrganizacionaJedinica,
         string Naziv,
@@ -21,15 +28,18 @@ namespace ERPAccounting.Application.DTOs
 
     // ══════════════════════════════════════════════════
     // SP 3: spNacinOporezivanjaComboNabavka
+    // FIXED: Dodato ObracunPorezPomocni
     public record TaxationMethodComboDto(
         int IdNacinOporezivanja,
         string Opis,
         short ObracunAkciza,
-        short ObracunPorez
+        short ObracunPorez,
+        short ObracunPorezPomocni  // NOVO!
     );
 
     // ══════════════════════════════════════════════════
     // SP 4: spReferentCombo
+    // OK - bez izmena
     public record ReferentComboDto(
         int IdRadnik,
         string ImeRadnika,
@@ -38,6 +48,7 @@ namespace ERPAccounting.Application.DTOs
 
     // ══════════════════════════════════════════════════
     // SP 5: spDokumentNDCombo
+    // OK - bez izmena
     public record DocumentNDComboDto(
         int IdDokument,
         string BrojDokumenta,
@@ -47,57 +58,68 @@ namespace ERPAccounting.Application.DTOs
 
     // ══════════════════════════════════════════════════
     // SP 6: spPoreskaStopaCombo
+    // FIXED: Uklonjen ProcenatPDV (ne postoji u SP!)
     public record TaxRateComboDto(
         string IdPoreskaStopa,
-        string Naziv,
-        decimal ProcenatPDV
+        string Naziv
     );
 
     // ══════════════════════════════════════════════════
     // SP 7: spArtikalComboUlaz
+    // FIXED: Dodato 7 nedostajućih atributa, promenjen NabavnaCena u OtkupnaCena
     public record ArticleComboDto(
         int IdArtikal,
         string SifraArtikal,
         string NazivArtikla,
         string? JedinicaMere,
-        decimal? NabavnaCena
+        string? IdPoreskaStopa,      // NOVO!
+        decimal ProcenatPoreza,      // NOVO!
+        decimal Akciza,              // NOVO!
+        decimal KoeficijentKolicine, // NOVO!
+        bool ImaLot,                 // NOVO!
+        decimal? OtkupnaCena,        // FIXED: bio NabavnaCena
+        bool PoljoprivredniProizvod  // NOVO!
     );
 
     // ══════════════════════════════════════════════════
     // SP 8: spDokumentTroskoviLista
+    // FIXED: Potpuno nova struktura prema stvarnom SP izlazu
     public record DocumentCostsListDto(
         int IdDokumentTroskovi,
-        int IdDokument,
-        int? IdPartner,
-        string? IdVrstaDokumenta,
-        string? BrojDokumenta,
-        DateTime? DatumDPO,
-        string? Opis
+        int? IdDokumentTroskoviStavka,
+        string ListaZavisnihTroskova,
+        decimal Osnovica,
+        decimal Pdv
     );
 
     // ══════════════════════════════════════════════════
     // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
+    // FIXED: Dodato 3 nedostajuća atributa
     public record CostTypeComboDto(
         int IdUlazniRacuniIzvedeni,
         string Naziv,
-        string? Opis
+        string? Opis,
+        string? NazivSpecifikacije,  // NOVO!
+        short ObracunPorez,          // NOVO!
+        int IdUlazniRacuniOsnovni    // NOVO!
     );
 
     // ══════════════════════════════════════════════════
-    // SP 10: spNacinDeljenjaTroskovaCombo (3 fiksne vrednosti: 1, 2, 3)
+    // SP 10: spNacinDeljenjaTroskovaCombo
+    // FIXED: Ispravljen naziv kolone
     public record CostDistributionMethodComboDto
     {
-        public int Id { get; set; } // 1, 2, 3
+        public int IdNacinDeljenjaTroskova { get; set; }  // FIXED: bio samo Id
         public string Naziv { get; set; } = string.Empty;
-        public string Opis { get; set; } = string.Empty;
+        public string OpisNacina { get; set; } = string.Empty;  // FIXED: bio samo Opis
     }
 
     // ══════════════════════════════════════════════════
     // SP 11: spDokumentTroskoviArtikliCOMBO
+    // FIXED: Uklonjena Kolicina (ne postoji u SP!)
     public record CostArticleComboDto(
         int IdStavkaDokumenta,
         string SifraArtikal,
-        string NazivArtikla,
-        decimal Kolicina
+        string NazivArtikla
     );
 }
