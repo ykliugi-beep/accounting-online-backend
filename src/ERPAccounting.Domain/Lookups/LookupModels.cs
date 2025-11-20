@@ -28,7 +28,7 @@ public record TaxationMethodLookup(
     short ObracunPorez
 );
 
-// ══════════════════════════════════════════════════
+// ══════════════ОК════════════════════════════════════
 // SP 4: spReferentCombo
 public record ReferentLookup(
     int IdRadnik,
