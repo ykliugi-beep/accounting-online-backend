@@ -1,28 +1,22 @@
-using System;
-using System.Collections.Generic;
-
 namespace ERPAccounting.Application.DTOs.Documents;
 
 /// <summary>
-/// DTO za response dokumenta
+/// DTO za response dokumenta sa ETag vrednošću za konkurentnost
 /// </summary>
 public record DocumentDto(
-    Guid Id,
-    string BrojDokumenta,
-    DateTime Datum,
-    int PartnerId,
-    int OrganizacionaJedinicaId,
-    int RadnikId,
-    int ValutaId,
-    decimal KursValute,
-    int NacinOporezivanjaId,
-    Guid? ReferentniDokumentId,
-    string? Napomena,
-    bool ObracunAkciza,
-    bool ObracunPorez,
-    bool Procesiran,
+    int Id,
+    string DocumentNumber,
+    DateTime DocumentDate,
+    int? PartnerId,
+    int OrganizationalUnitId,
+    int? ReferentDocumentId,
+    decimal DependentCostsNet,
+    decimal DependentCostsVat,
+    string? Note,
+    bool Processed,
+    bool Posted,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     int? CreatedBy,
-    int? UpdatedBy
-);
+    int? UpdatedBy,
+    string ETag);

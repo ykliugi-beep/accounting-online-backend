@@ -33,15 +33,24 @@ public class DocumentCost : BaseEntity
     
     [Column("Opis")]
     public string? Opis { get; set; }
-    
+
+    [Column("NazivTroska")]
+    public string? NazivTroska { get; set; }
+
     [Required, Column("IDStatus")]
     public int IDStatus { get; set; }
-    
+
     [Column("IDValuta")]
     public int? IDValuta { get; set; }
     
     [Column("Kurs", TypeName = "money")]
     public decimal? Kurs { get; set; } = 0;
+
+    [Column("IznosBezPDV", TypeName = "money")]
+    public decimal IznosBezPDV { get; set; } = 0;
+
+    [Column("IznosPDV", TypeName = "money")]
+    public decimal IznosPDV { get; set; } = 0;
     
     /// <summary>CRITICAL: RowVersion for ETag concurrency</summary>
     [Timestamp, Column("DokumentTroskoviTimeStamp")]
@@ -49,5 +58,6 @@ public class DocumentCost : BaseEntity
     
     // Navigation
     public virtual Document Document { get; set; } = null!;
-    public virtual ICollection<DocumentCostLineItem> LineItems { get; set; } = new List<DocumentCostLineItem>();
+
+    public virtual ICollection<DocumentCostLineItem> CostLineItems { get; set; } = new List<DocumentCostLineItem>();
 }
