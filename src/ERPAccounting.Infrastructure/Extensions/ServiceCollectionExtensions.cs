@@ -1,5 +1,7 @@
 using ERPAccounting.Domain.Abstractions.Gateways;
+using ERPAccounting.Domain.Abstractions.Repositories;
 using ERPAccounting.Infrastructure.Data;
+using ERPAccounting.Infrastructure.Repositories;
 using ERPAccounting.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +23,11 @@ public static class ServiceCollectionExtensions
 
         // Repositories & Gateways
         services.AddScoped<IStoredProcedureGateway, StoredProcedureGateway>();
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IDocumentLineItemRepository, DocumentLineItemRepository>();
+        services.AddScoped<IDocumentCostRepository, DocumentCostRepository>();
+        services.AddScoped<IDocumentCostItemRepository, DocumentCostItemRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 
         return services;
