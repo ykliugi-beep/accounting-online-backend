@@ -21,15 +21,19 @@ public static class ServiceCollectionExtensions
                 configuration.GetConnectionString("DefaultConnection"),
                 sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-        // Repositories & Gateways
+        RegisterRepositories(services);
+
+        return services;
+    }
+
+    private static void RegisterRepositories(IServiceCollection services)
+    {
+        // Gateways and repositories needed by application services
         services.AddScoped<IStoredProcedureGateway, StoredProcedureGateway>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentLineItemRepository, DocumentLineItemRepository>();
         services.AddScoped<IDocumentCostRepository, DocumentCostRepository>();
         services.AddScoped<IDocumentCostItemRepository, DocumentCostItemRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-
-        return services;
     }
 }
