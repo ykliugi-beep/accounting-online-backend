@@ -19,6 +19,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDocumentCostService, DocumentCostService>();
         services.AddScoped<IDocumentLineItemService, DocumentLineItemService>();
+        // Register lookup services.  IStoredProcedureService wraps LookupService for backwards compatibility.
         services.AddScoped<IStoredProcedureService, StoredProcedureService>();
         services.AddScoped<ILookupService, LookupService>();
 

@@ -3,9 +3,9 @@ using ERPAccounting.Application.DTOs;
 namespace ERPAccounting.Application.Services;
 
 /// <summary>
-/// Provides a controller-facing abstraction for all lookup related operations.
-/// Coordinates calls to the stored-procedure service while keeping
-/// defaulting/validation logic inside the application layer.
+/// Provides a controller-facing abstraction for all lookup-related operations.
+/// Coordinates retrieval of lookup data from the persistence layer, applying
+/// any defaulting or validation logic in the application layer.
 /// </summary>
 public interface ILookupService
 {

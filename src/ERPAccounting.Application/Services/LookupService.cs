@@ -1,57 +1,188 @@
-using ERPAccounting.Application.DTOs;
+﻿using ERPAccounting.Application.DTOs;
+using ERPAccounting.Domain.Abstractions.Gateways;
+using ERPAccounting.Domain.Lookups;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ERPAccounting.Application.Services;
 
 /// <summary>
-/// High level lookup orchestrator that is consumed by API controllers.
-/// Keeps controller logic thin by coordinating with <see cref="IStoredProcedureService"/>.
+/// High-level lookup orchestrator consumed by API controllers.
+/// Keeps controller logic thin by retrieving data via the stored-procedure gateway and mapping results to DTOs.
 /// </summary>
 public class LookupService : ILookupService
 {
     private const string DefaultDocumentTypeId = "UR";
-    private readonly IStoredProcedureService _storedProcedureService;
+    private readonly IStoredProcedureGateway _storedProcedureGateway;
 
-    public LookupService(IStoredProcedureService storedProcedureService)
+    public LookupService(IStoredProcedureGateway storedProcedureGateway)
     {
-        _storedProcedureService = storedProcedureService;
+        _storedProcedureGateway = storedProcedureGateway;
     }
 
-    public Task<List<PartnerComboDto>> GetPartnerComboAsync()
-        => _storedProcedureService.GetPartnerComboAsync();
+    public async Task<List<PartnerComboDto>> GetPartnerComboAsync()
+    {
+        var partners = await _storedProcedureGateway.GetPartnerComboAsync();
+        return partners.Select(MapToPartnerDto).ToList();
+    }
 
-    public Task<List<OrgUnitComboDto>> GetOrgUnitsComboAsync(string? docTypeId = null)
+    public async Task<List<OrgUnitComboDto>> GetOrgUnitsComboAsync(string? docTypeId = null)
     {
         var effectiveDocTypeId = string.IsNullOrWhiteSpace(docTypeId)
             ? DefaultDocumentTypeId
-            : docTypeId;
+            : docTypeId!;
 
-        return _storedProcedureService.GetOrgUnitsComboAsync(effectiveDocTypeId);
+        var orgUnits = await _storedProcedureGateway.GetOrgUnitsComboAsync(effectiveDocTypeId);
+        return orgUnits.Select(MapToOrgUnitDto).ToList();
     }
 
-    public Task<List<TaxationMethodComboDto>> GetTaxationMethodsComboAsync()
-        => _storedProcedureService.GetTaxationMethodsComboAsync();
+    public async Task<List<TaxationMethodComboDto>> GetTaxationMethodsComboAsync()
+    {
+        var taxationMethods = await _storedProcedureGateway.GetTaxationMethodsComboAsync();
+        return taxationMethods.Select(MapToTaxationMethodDto).ToList();
+    }
 
-    public Task<List<ReferentComboDto>> GetReferentsComboAsync()
-        => _storedProcedureService.GetReferentsComboAsync();
+    public async Task<List<ReferentComboDto>> GetReferentsComboAsync()
+    {
+        var referents = await _storedProcedureGateway.GetReferentsComboAsync();
+        return [.. referents.Select(MapToReferentDto)];
+    }
 
-    public Task<List<DocumentNDComboDto>> GetDocumentNDComboAsync()
-        => _storedProcedureService.GetDocumentNDComboAsync();
+    public async Task<List<DocumentNDComboDto>> GetDocumentNDComboAsync()
+    {
+        var documents = await _storedProcedureGateway.GetDocumentNDComboAsync();
+        return [.. documents.Select(MapToDocumentNDDto)];
+    }
 
-    public Task<List<TaxRateComboDto>> GetTaxRatesComboAsync()
-        => _storedProcedureService.GetTaxRatesComboAsync();
+    public async Task<List<TaxRateComboDto>> GetTaxRatesComboAsync()
+    {
+        var taxRates = await _storedProcedureGateway.GetTaxRatesComboAsync();
+        return [.. taxRates.Select(MapToTaxRateDto)];
+    }
 
-    public Task<List<ArticleComboDto>> GetArticlesComboAsync()
-        => _storedProcedureService.GetArticlesComboAsync();
+    public async Task<List<ArticleComboDto>> GetArticlesComboAsync()
+    {
+        var articles = await _storedProcedureGateway.GetArticlesComboAsync();
+        return [.. articles.Select(MapToArticleDto)];
+    }
 
-    public Task<List<DocumentCostsListDto>> GetDocumentCostsListAsync(int documentId)
-        => _storedProcedureService.GetDocumentCostsListAsync(documentId);
+    public async Task<List<DocumentCostsListDto>> GetDocumentCostsListAsync(int documentId)
+    {
+        var costs = await _storedProcedureGateway.GetDocumentCostsListAsync(documentId);
+        return [.. costs.Select(MapToDocumentCostDto)];
+    }
 
-    public Task<List<CostTypeComboDto>> GetCostTypesComboAsync()
-        => _storedProcedureService.GetCostTypesComboAsync();
+    public async Task<List<CostTypeComboDto>> GetCostTypesComboAsync()
+    {
+        var costTypes = await _storedProcedureGateway.GetCostTypesComboAsync();
+        return [.. costTypes.Select(MapToCostTypeDto)];
+    }
 
-    public Task<List<CostDistributionMethodComboDto>> GetCostDistributionMethodsComboAsync()
-        => _storedProcedureService.GetCostDistributionMethodsComboAsync();
+    public async Task<List<CostDistributionMethodComboDto>> GetCostDistributionMethodsComboAsync()
+    {
+        var methods = await _storedProcedureGateway.GetCostDistributionMethodsComboAsync();
+        return [.. methods.Select(MapToCostDistributionMethodDto)];
+    }
 
-    public Task<List<CostArticleComboDto>> GetCostArticlesComboAsync(int documentId)
-        => _storedProcedureService.GetCostArticlesComboAsync(documentId);
+    public async Task<List<CostArticleComboDto>> GetCostArticlesComboAsync(int documentId)
+    {
+        var articles = await _storedProcedureGateway.GetCostArticlesComboAsync(documentId);
+        return [.. articles.Select(MapToCostArticleDto)];
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MAPPING FUNCTIONS – align domain lookup models to application DTOs
+    // ═══════════════════════════════════════════════════════════════
+
+    private static PartnerComboDto MapToPartnerDto(PartnerLookup source) => new(
+        source.IdPartner,
+        source.NazivPartnera,
+        source.Mesto,
+        source.Opis,
+        source.IdStatus,
+        source.IdNacinOporezivanjaNabavka,
+        source.ObracunAkciza,
+        source.ObracunPorez,
+        source.IdReferent,
+        source.SifraPartner
+    );
+
+    private static OrgUnitComboDto MapToOrgUnitDto(OrgUnitLookup source) => new(
+        source.IdOrganizacionaJedinica,
+        source.Naziv,
+        source.Mesto,
+        source.Sifra
+    );
+
+    private static TaxationMethodComboDto MapToTaxationMethodDto(TaxationMethodLookup source) => new(
+        source.IdNacinOporezivanja,
+        source.Opis,
+        source.ObracunAkciza,
+        source.ObracunPorez,
+        source.ObracunPorezPomocni
+    );
+
+    private static ReferentComboDto MapToReferentDto(ReferentLookup source) => new(
+        source.IdRadnik,
+        source.ImeRadnika,
+        source.SifraRadnika
+    );
+
+    private static DocumentNDComboDto MapToDocumentNDDto(DocumentNDLookup source) => new(
+        source.IdDokument,
+        source.BrojDokumenta,
+        source.Datum,
+        source.NazivPartnera
+    );
+
+    private static TaxRateComboDto MapToTaxRateDto(TaxRateLookup source) => new(
+        source.IdPoreskaStopa,
+        source.Naziv
+    );
+
+    private static ArticleComboDto MapToArticleDto(ArticleLookup source) => new(
+        source.IdArtikal,
+        source.SifraArtikal,
+        source.NazivArtikla,
+        source.JedinicaMere,
+        source.IdPoreskaStopa,
+        source.ProcenatPoreza,
+        source.Akciza,
+        source.KoeficijentKolicine,
+        source.ImaLot,
+        source.OtkupnaCena,
+        source.PoljoprivredniProizvod
+    );
+
+    private static DocumentCostsListDto MapToDocumentCostDto(DocumentCostLookup source) => new(
+        source.IdDokumentTroskovi,
+        source.IdDokumentTroskoviStavka,
+        source.ListaTroskova,
+        source.Osnovica,
+        source.Pdv
+    );
+
+    private static CostTypeComboDto MapToCostTypeDto(CostTypeLookup source) => new(
+        source.IdUlazniRacuniIzvedeni,
+        source.Naziv,
+        source.Opis,
+        source.NazivSpecifikacije,
+        source.ObracunPorez,
+        source.IdUlazniRacuniOsnovni
+    );
+
+    private static CostDistributionMethodComboDto MapToCostDistributionMethodDto(CostDistributionMethodLookup source)
+        => new()
+        {
+            IdNacinDeljenjaTroskova = source.IdNacinDeljenjaTroskova,
+            Naziv = source.Naziv,
+            OpisNacina = source.OpisNacina
+        };
+
+    private static CostArticleComboDto MapToCostArticleDto(CostArticleLookup source) => new(
+        source.IdStavkaDokumenta,
+        source.SifraArtikal,
+        source.NazivArtikla
+    );
 }

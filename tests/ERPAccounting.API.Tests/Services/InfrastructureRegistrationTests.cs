@@ -24,7 +24,7 @@ public class InfrastructureRegistrationTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddInfrastructureServices(configuration);
+        services.AddInfrastructure(configuration);
 
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
@@ -49,7 +49,7 @@ public class InfrastructureRegistrationTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddInfrastructureServices(configuration);
+        services.AddInfrastructure(configuration);
 
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();

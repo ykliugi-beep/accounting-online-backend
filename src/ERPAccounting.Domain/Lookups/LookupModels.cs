@@ -1,124 +1,109 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace ERPAccounting.Domain.Lookups;
 
-// ══════════════════════════════════════════════════
 // SP 1: spPartnerComboStatusNabavka
-// FIXED: Dodato 5 nedostajućih atributa
 public record PartnerLookup(
-    int IdPartner,
-    string NazivPartnera,
-    string? Mesto,
-    string? Opis,              // Status description - NOVO!
-    int IdStatus,
-    int? IdNacinOporezivanjaNabavka,  // NOVO!
-    short ObracunAkciza,       // NOVO!
-    short ObracunPorez,        // NOVO!
-    int? IdReferent,           // NOVO!
-    string? Sifra
+    [property: Column("IDPartner")] int IdPartner,
+    [property: Column("NAZIV PARTNERA")] string NazivPartnera,
+    [property: Column("MESTO")] string? Mesto,
+    [property: Column("Opis")] string? Opis,
+    [property: Column("IDStatus")] int IdStatus,
+    [property: Column("IDNacinOporezivanjaNabavka")] int? IdNacinOporezivanjaNabavka,
+    [property: Column("ObracunAkciza")] short ObracunAkciza,
+    [property: Column("ObracunPorez")] short ObracunPorez,
+    [property: Column("IDReferent")] int? IdReferent,
+    [property: Column("SifraPartner")] string? SifraPartner
 );
 
-// ══════════════════════════════════════════════════
 // SP 2: spOrganizacionaJedinicaCombo
-// OK - bez izmena
 public record OrgUnitLookup(
-    int IdOrganizacionaJedinica,
-    string Naziv,
-    string? Mesto,
-    string? Sifra
+    [property: Column("IDOrganizacionaJedinica")] int IdOrganizacionaJedinica,
+    [property: Column("NAZIV MAGACINA")] string Naziv,
+    [property: Column("MESTO")] string? Mesto,
+    [property: Column("SifraOrganizacionaJedinica")] string? Sifra
 );
 
-// ══════════════════════════════════════════════════
 // SP 3: spNacinOporezivanjaComboNabavka
-// FIXED: Dodato ObracunPorezPomocni
 public record TaxationMethodLookup(
-    int IdNacinOporezivanja,
-    string Opis,
-    short ObracunAkciza,
-    short ObracunPorez,
-    short ObracunPorezPomocni  // NOVO!
+    [property: Column("IDNacinOporezivanja")] int IdNacinOporezivanja,
+    [property: Column("Opis")] string Opis,
+    [property: Column("ObracunAkciza")] short ObracunAkciza,
+    [property: Column("ObracunPorez")] short ObracunPorez,
+    [property: Column("ObracunPorezPomocni")] short ObracunPorezPomocni
 );
 
-// ══════════════════════════════════════════════════
 // SP 4: spReferentCombo
-// OK - bez izmena
 public record ReferentLookup(
-    int IdRadnik,
-    string ImeRadnika,
-    string? SifraRadnika
+    [property: Column("IDRadnik")] int IdRadnik,
+    [property: Column("IME I PREZIME")] string ImeRadnika,
+    [property: Column("SifraRadnika")] string? SifraRadnika
 );
 
-// ══════════════════════════════════════════════════
 // SP 5: spDokumentNDCombo
-// OK - bez izmena
 public record DocumentNDLookup(
-    int IdDokument,
-    string BrojDokumenta,
-    DateTime Datum,
-    string NazivPartnera
+    [property: Column("IDDokument")] int IdDokument,
+    [property: Column("BrojDokumenta")] string BrojDokumenta,
+    [property: Column("Datum")] DateTime Datum,
+    [property: Column("NazivPartnera")] string NazivPartnera
 );
 
-// ══════════════════════════════════════════════════
 // SP 6: spPoreskaStopaCombo
-// FIXED: Uklonjen ProcenatPDV (ne postoji u SP!)
 public record TaxRateLookup(
-    string IdPoreskaStopa,
-    string Naziv
+    [property: Column("IDPoreskaStopa")] string IdPoreskaStopa,
+    [property: Column("Naziv")] string Naziv
 );
 
-// ══════════════════════════════════════════════════
 // SP 7: spArtikalComboUlaz
-// FIXED: Dodato 7 nedostajućih atributa, promenjen NabavnaCena u OtkupnaCena
 public record ArticleLookup(
-    int IdArtikal,
-    string SifraArtikal,
-    string NazivArtikla,
-    string? JedinicaMere,
-    string? IdPoreskaStopa,    // NOVO!
-    decimal ProcenatPoreza,    // NOVO!
-    decimal Akciza,            // NOVO!
-    decimal KoeficijentKolicine,  // NOVO!
-    bool ImaLot,               // NOVO!
-    decimal? OtkupnaCena,      // FIXED: bio NabavnaCena
-    bool PoljoprivredniProizvod  // NOVO!
+    [property: Column("IDArtikal")] int IdArtikal,
+    [property: Column("SIFRA")] string SifraArtikal,
+    [property: Column("NAZIV ARTIKLA")] string NazivArtikla,
+    [property: Column("JM")] string? JedinicaMere,
+    [property: Column("IDPoreskaStopa")] string? IdPoreskaStopa,
+    [property: Column("ProcenatPoreza")] decimal ProcenatPoreza,
+    [property: Column("Akciza")] decimal Akciza,
+    [property: Column("KoeficijentKolicine")] decimal KoeficijentKolicine,
+    [property: Column("ImaLot")] bool ImaLot,
+    [property: Column("OtkupnaCena")] decimal? OtkupnaCena,
+    [property: Column("PoljoprivredniProizvod")] bool PoljoprivredniProizvod
 );
 
-// ══════════════════════════════════════════════════
 // SP 8: spDokumentTroskoviLista
-// FIXED: Potpuno nova struktura prema stvarnom SP izlazu
 public record DocumentCostLookup(
-    int IdDokumentTroskovi,
-    int? IdDokumentTroskoviStavka,
-    string ListaZavisnihTroskova,
-    decimal Osnovica,
-    decimal Pdv
+    [property: Column("IDDokumentTroskovi")] int IdDokumentTroskovi,
+    [property: Column("IDDokumentTroskoviStavka")] int? IdDokumentTroskoviStavka,
+    [property: Column("ListaTroskova")] string ListaTroskova,
+    [property: Column("OSNOVICA")] decimal Osnovica,
+    [property: Column("PDV")] decimal Pdv
 );
 
-// ══════════════════════════════════════════════════
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
-// FIXED: Dodato 3 nedostajuća atributa
 public record CostTypeLookup(
-    int IdUlazniRacuniIzvedeni,
-    string Naziv,
-    string? Opis,
-    string? NazivSpecifikacije,  // NOVO!
-    short ObracunPorez,          // NOVO!
-    int IdUlazniRacuniOsnovni    // NOVO!
+    [property: Column("IDUlazniRacuniIzvedeni")] int IdUlazniRacuniIzvedeni,
+    [property: Column("Naziv")] string Naziv,
+    [property: Column("Opis")] string? Opis,
+    [property: Column("NazivSpecifikacije")] string? NazivSpecifikacije,
+    [property: Column("ObracunPorez")] short ObracunPorez,
+    [property: Column("IDUlazniRacuniOsnovni")] int IdUlazniRacuniOsnovni
 );
 
-// ══════════════════════════════════════════════════
 // SP 10: spNacinDeljenjaTroskovaCombo
-// FIXED: Ispravljen naziv kolone
 public record CostDistributionMethodLookup
 {
-    public int IdNacinDeljenjaTroskova { get; set; }  // FIXED: bio samo Id
+    [Column("IDNacinDeljenjaTroskova")]
+    public int IdNacinDeljenjaTroskova { get; set; }
+
+    [Column("Naziv")]
     public string Naziv { get; set; } = string.Empty;
-    public string OpisNacina { get; set; } = string.Empty;  // FIXED: bio samo Opis
+
+    [Column("OpisNacina")]
+    public string OpisNacina { get; set; } = string.Empty;
 }
 
-// ══════════════════════════════════════════════════
 // SP 11: spDokumentTroskoviArtikliCOMBO
-// FIXED: Uklonjena Kolicina (ne postoji u SP!)
 public record CostArticleLookup(
-    int IdStavkaDokumenta,
-    string SifraArtikal,
-    string NazivArtikla
+    [property: Column("IDStavkaDokumenta")] int IdStavkaDokumenta,
+    [property: Column("SifraArtikal")] string SifraArtikal,
+    [property: Column("NazivArtikla")] string NazivArtikla
 );

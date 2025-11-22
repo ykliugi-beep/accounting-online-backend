@@ -1,4 +1,3 @@
-using System;
 using ERPAccounting.Domain.Abstractions.Gateways;
 using ERPAccounting.Domain.Abstractions.Repositories;
 using ERPAccounting.Infrastructure.Data;
@@ -12,32 +11,29 @@ namespace ERPAccounting.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructureServices(
+    public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "DefaultConnection is not configured. Please define it in appsettings.json as described in the documentation.");
-        }
-
+        // Database
         services.AddDbContext<AppDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString, sqlOptions =>
-            {
-                sqlOptions.EnableRetryOnFailure();
-            });
-        });
+            options.UseSqlServer(
+                configuration.GetConnectionString("DefaultConnection"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
+        RegisterRepositories(services);
+
+        return services;
+    }
+
+    private static void RegisterRepositories(IServiceCollection services)
+    {
+        // Gateways and repositories needed by application services
+        services.AddScoped<IStoredProcedureGateway, StoredProcedureGateway>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentLineItemRepository, DocumentLineItemRepository>();
         services.AddScoped<IDocumentCostRepository, DocumentCostRepository>();
         services.AddScoped<IDocumentCostItemRepository, DocumentCostItemRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IStoredProcedureGateway, StoredProcedureGateway>();
-
-        return services;
     }
 }

@@ -1,4 +1,7 @@
+using System.Linq;
+using System.Net;
 using ERPAccounting.API.Controllers;
+using ERPAccounting.Common.Exceptions;
 using ERPAccounting.Application.DTOs;
 using ERPAccounting.Application.Services;
 using ERPAccounting.Common.Constants;
@@ -42,6 +45,70 @@ public class DocumentLineItemsControllerTests
         Assert.Equal(ErrorMessages.InvalidIfMatchHeader, problem.Detail);
         Assert.Equal(ErrorCodes.MissingIfMatchHeader, problem.ErrorCode);
         serviceMock.Verify(s => s.UpdateAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<byte[]>(), It.IsAny<PatchLineItemDto>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateItem_WhenIfMatchHeaderValid_ReturnsOkAndSetsEtag()
+    {
+        var rowVersion = new byte[] { 1, 2, 3, 4 };
+        var etag = Convert.ToBase64String(rowVersion);
+        var timestamp = DateTime.UtcNow;
+        var updatedItem = new DocumentLineItemDto(
+            10,
+            1,
+            1,
+            1m,
+            2m,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            true,
+            null,
+            etag,
+            timestamp,
+            timestamp,
+            null,
+            null);
+        var serviceMock = new Mock<IDocumentLineItemService>(MockBehavior.Strict);
+        serviceMock
+            // Keep matcher inline so Moq captures it in the expression tree
+            .Setup(s => s.UpdateAsync(1, 10, It.Is<byte[]>(b => b.SequenceEqual(rowVersion)), It.IsAny<PatchLineItemDto>()))
+            .ReturnsAsync(updatedItem);
+
+        var controller = CreateController(serviceMock);
+        controller.Request.Headers["If-Match"] = $"\"{etag}\"";
+
+        var result = await controller.UpdateItem(1, 10, new PatchLineItemDto());
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<DocumentLineItemDto>(okResult.Value);
+        Assert.Equal(updatedItem, dto);
+        Assert.Equal($"\"{etag}\"", controller.Response.Headers["ETag"].ToString());
+        serviceMock.Verify(s => s.UpdateAsync(1, 10, It.Is<byte[]>(b => b.SequenceEqual(rowVersion)), It.IsAny<PatchLineItemDto>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateItem_WhenServiceThrowsConflictException_ReturnsConflictResult()
+    {
+        var rowVersion = new byte[] { 5, 6, 7, 8 };
+        var etag = Convert.ToBase64String(rowVersion);
+        var serviceMock = new Mock<IDocumentLineItemService>(MockBehavior.Strict);
+        serviceMock
+            // Keep matcher inline so Moq captures it in the expression tree
+            .Setup(s => s.UpdateAsync(1, 10, It.Is<byte[]>(b => b.SequenceEqual(rowVersion)), It.IsAny<PatchLineItemDto>()))
+            .ThrowsAsync(new ConflictException("Row version mismatch"));
+
+        var controller = CreateController(serviceMock);
+        controller.Request.Headers["If-Match"] = $"\"{etag}\"";
+
+        var exception = await Assert.ThrowsAsync<ConflictException>(() => controller.UpdateItem(1, 10, new PatchLineItemDto()));
+
+        Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
+        serviceMock.Verify(s => s.UpdateAsync(1, 10, It.Is<byte[]>(b => b.SequenceEqual(rowVersion)), It.IsAny<PatchLineItemDto>()), Times.Once);
     }
 
     [Fact]
