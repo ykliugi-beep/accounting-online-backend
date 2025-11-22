@@ -82,7 +82,7 @@ public record CostTypeComboDto(
     string Naziv,
     string? Opis,
     string? NazivSpecifikacije,
-    short ObracunPorez,
+    int ObracunPorez,
     int IdUlazniRacuniOsnovni
 );
 
