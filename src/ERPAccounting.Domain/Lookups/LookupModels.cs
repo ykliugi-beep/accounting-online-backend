@@ -84,7 +84,7 @@ public record CostTypeLookup(
     [property: Column("Naziv")] string Naziv,
     [property: Column("Opis")] string? Opis,
     [property: Column("NazivSpecifikacije")] string? NazivSpecifikacije,
-    [property: Column("ObracunPorez")] short ObracunPorez,
+    [property: Column("ObracunPorez")] int ObracunPorez,
     [property: Column("IDUlazniRacuniOsnovni")] int IdUlazniRacuniOsnovni
 );
 
