@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),
                 sqlOptions => sqlOptions
-                    .CommandTimeout(120)
+                    .CommandTimeout(180)
                     .EnableRetryOnFailure()));
 
         RegisterRepositories(services);
