@@ -61,11 +61,11 @@ public record ArticleLookup(
     [property: Column("NAZIV ARTIKLA")] string NazivArtikla,
     [property: Column("JM")] string? JedinicaMere,
     [property: Column("IDPoreskaStopa")] string? IdPoreskaStopa,
-    [property: Column("ProcenatPoreza")] decimal ProcenatPoreza,
-    [property: Column("Akciza")] decimal Akciza,
-    [property: Column("KoeficijentKolicine")] decimal KoeficijentKolicine,
+    [property: Column("ProcenatPoreza")] double ProcenatPoreza,
+    [property: Column("Akciza")] double Akciza,
+    [property: Column("KoeficijentKolicine")] double KoeficijentKolicine,
     [property: Column("ImaLot")] bool ImaLot,
-    [property: Column("OtkupnaCena")] decimal? OtkupnaCena,
+    [property: Column("OtkupnaCena")] double? OtkupnaCena,
     [property: Column("PoljoprivredniProizvod")] bool PoljoprivredniProizvod
 );
 
@@ -79,12 +79,13 @@ public record DocumentCostLookup(
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
+// ObracunPorez is an int to match the stored procedure output and avoid InvalidCastException.
 public record CostTypeLookup(
     [property: Column("IDUlazniRacuniIzvedeni")] int IdUlazniRacuniIzvedeni,
     [property: Column("Naziv")] string Naziv,
     [property: Column("Opis")] string? Opis,
     [property: Column("NazivSpecifikacije")] string? NazivSpecifikacije,
-    [property: Column("ObracunPorez")] short ObracunPorez,
+    [property: Column("ObracunPorez")] int ObracunPorez,
     [property: Column("IDUlazniRacuniOsnovni")] int IdUlazniRacuniOsnovni
 );
 
@@ -92,7 +93,7 @@ public record CostTypeLookup(
 public record CostDistributionMethodLookup
 {
     [Column("IDNacinDeljenjaTroskova")]
-    public int IdNacinDeljenjaTroskova { get; set; }
+    public short IdNacinDeljenjaTroskova { get; set; }
 
     [Column("Naziv")]
     public string Naziv { get; set; } = string.Empty;

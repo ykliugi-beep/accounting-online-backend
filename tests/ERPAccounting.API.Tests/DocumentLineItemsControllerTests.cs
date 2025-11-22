@@ -52,27 +52,26 @@ public class DocumentLineItemsControllerTests
     {
         var rowVersion = new byte[] { 1, 2, 3, 4 };
         var etag = Convert.ToBase64String(rowVersion);
-        var timestamp = DateTime.UtcNow;
         var updatedItem = new DocumentLineItemDto(
             10,
             1,
-            1,
-            1m,
-            2m,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
+            5,
+            2.5m,
+            150m,
+            10m,
+            5m,
+            "VAT20",
+            20m,
+            30m,
+            320m,
             false,
             true,
-            null,
+            "Updated line item",
             etag,
-            timestamp,
-            timestamp,
-            null,
-            null);
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2024, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+            99,
+            100);
         var serviceMock = new Mock<IDocumentLineItemService>(MockBehavior.Strict);
         serviceMock
             .Setup(s => s.UpdateAsync(1, 10, It.Is<byte[]>(b => b != null && b.SequenceEqual(rowVersion)), It.IsAny<PatchLineItemDto>()))

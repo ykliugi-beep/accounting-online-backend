@@ -59,11 +59,11 @@ public record ArticleComboDto(
     string NazivArtikla,
     string? JedinicaMere,
     string? IdPoreskaStopa,
-    decimal ProcenatPoreza,
-    decimal Akciza,
-    decimal KoeficijentKolicine,
+    double ProcenatPoreza,
+    double Akciza,
+    double KoeficijentKolicine,
     bool ImaLot,
-    decimal? OtkupnaCena,
+    double? OtkupnaCena,
     bool PoljoprivredniProizvod
 );
 
@@ -77,12 +77,13 @@ public record DocumentCostsListDto(
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
+// ObracunPorez is an int to mirror the stored procedure output and prevent InvalidCastException.
 public record CostTypeComboDto(
     int IdUlazniRacuniIzvedeni,
     string Naziv,
     string? Opis,
     string? NazivSpecifikacije,
-    short ObracunPorez,
+    int ObracunPorez,
     int IdUlazniRacuniOsnovni
 );
 
