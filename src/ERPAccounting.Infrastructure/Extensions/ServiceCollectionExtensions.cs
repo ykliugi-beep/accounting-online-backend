@@ -1,3 +1,4 @@
+using ERPAccounting.Application.Common.Interfaces;
 using ERPAccounting.Domain.Abstractions.Gateways;
 using ERPAccounting.Domain.Abstractions.Repositories;
 using ERPAccounting.Infrastructure.Data;
@@ -24,6 +25,8 @@ public static class ServiceCollectionExtensions
                     .EnableRetryOnFailure()));
 
         RegisterRepositories(services);
+
+        services.AddScoped<IAuditLogService, AuditLogService>();
 
         return services;
     }
