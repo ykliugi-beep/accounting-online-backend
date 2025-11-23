@@ -1,4 +1,4 @@
-using ERPAccounting.Common.Interfaces;
+using ERPAccounting.Application.Common.Interfaces;
 
 namespace ERPAccounting.Infrastructure.Services
 {

@@ -1,6 +1,8 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using ERPAccounting.Domain.Entities;
 
-namespace ERPAccounting.Common.Interfaces
+namespace ERPAccounting.Application.Common.Interfaces
 {
     /// <summary>
     /// Servis za logovanje API poziva u bazu podataka.
