@@ -72,8 +72,8 @@ public record DocumentCostsListDto(
     int IdDokumentTroskovi,
     int? IdDokumentTroskoviStavka,
     string ListaTroskova,
-    decimal Osnovica,
-    decimal Pdv
+    decimal? Osnovica,
+    decimal? Pdv
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
