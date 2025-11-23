@@ -91,6 +91,15 @@ namespace ERPAccounting.Infrastructure.Data
                 .HasForeignKey(e => e.IDDokument)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            documentEntity.HasMany(e => e.AdvanceVATs)
+                .WithOne(e => e.Document)
+                .HasForeignKey(e => e.IDDokument)
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
+
+            modelBuilder.Entity<DocumentAdvanceVAT>()
+                .HasQueryFilter(e => !e.Document.IsDeleted);
+
             // ═══════════════════════════════════════════════════════════════
             // DOCUMENT LINE ITEM KONFIGURACIJA - KRITIČNO ZA KONKURENTNOST
             var lineItemEntity = modelBuilder.Entity<DocumentLineItem>();
@@ -196,6 +205,15 @@ namespace ERPAccounting.Infrastructure.Data
                 .WithMany(e => e.CostLineItems)
                 .HasForeignKey(e => e.IDDokumentTroskovi)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            costLineItemEntity.HasMany(e => e.VATItems)
+                .WithOne(e => e.DocumentCostLineItem)
+                .HasForeignKey(e => e.IDDokumentTroskoviStavka)
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
+
+            modelBuilder.Entity<DocumentCostVAT>()
+                .HasQueryFilter(e => !e.DocumentCostLineItem.IsDeleted);
 
             // ═══════════════════════════════════════════════════════════════
             // DEPENDENT COST LINE ITEM KONFIGURACIJA
