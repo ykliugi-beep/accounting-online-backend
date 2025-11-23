@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ERPAccounting.Domain.Entities;
 using ERPAccounting.Application.Common.Interfaces;
-using ERPAccounting.Domain.Common;
 using ERPAccounting.Infrastructure.Persistence.Interceptors;
 
 namespace ERPAccounting.Infrastructure.Data
