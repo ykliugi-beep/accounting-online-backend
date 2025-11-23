@@ -22,7 +22,8 @@ public static class ServiceCollectionExtensions
 
         // Factory needed for background/asynchronous operations (AuditLogService)
         services.AddDbContextFactory<AppDbContext>(options =>
-            ConfigureDatabase(options, configuration));
+            ConfigureDatabase(options, configuration),
+            ServiceLifetime.Scoped);
 
         RegisterRepositories(services);
 
