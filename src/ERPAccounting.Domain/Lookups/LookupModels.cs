@@ -74,8 +74,8 @@ public record DocumentCostLookup(
     [property: Column("IDDokumentTroskovi")] int IdDokumentTroskovi,
     [property: Column("IDDokumentTroskoviStavka")] int? IdDokumentTroskoviStavka,
     [property: Column("ListaTroskova")] string ListaTroskova,
-    [property: Column("OSNOVICA")] decimal Osnovica,
-    [property: Column("PDV")] decimal Pdv
+    [property: Column("OSNOVICA")] decimal? Osnovica,
+    [property: Column("PDV")] decimal? Pdv
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
