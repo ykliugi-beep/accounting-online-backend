@@ -14,20 +14,18 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
     /// Interceptor koji automatski popunjava audit property-je pri SaveChanges().
     /// Implementira soft delete pattern - DELETE operacije se konvertuju u UPDATE sa IsDeleted = true.
     /// </summary>
-    public class AuditInterceptor : SaveChangesInterceptor
+    public class AuditInterceptor(ICurrentUserService currentUserService) : SaveChangesInterceptor
     {
-        private readonly ICurrentUserService _currentUserService;
-
-        public AuditInterceptor(ICurrentUserService currentUserService)
-        {
-            _currentUserService = currentUserService;
-        }
+        private readonly ICurrentUserService _currentUserService = currentUserService;
 
         public override InterceptionResult<int> SavingChanges(
             DbContextEventData eventData,
             InterceptionResult<int> result)
         {
-            UpdateEntities(eventData.Context);
+            if (eventData.Context != null)
+            {
+                UpdateEntities(eventData.Context);
+            }
             return base.SavingChanges(eventData, result);
         }
 
@@ -36,7 +34,10 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            UpdateEntities(eventData.Context);
+            if (eventData.Context != null)
+            {
+                UpdateEntities(eventData.Context);
+            }
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 

@@ -6,6 +6,7 @@ using ERPAccounting.Domain.Entities;
 using ERPAccounting.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace ERPAccounting.Infrastructure.Services
 {
@@ -116,24 +117,13 @@ namespace ERPAccounting.Infrastructure.Services
         /// Helper metoda za serijalizaciju vrednosti u string format.
         /// Rukuje null, complex types, i edge cases.
         /// </summary>
-        private static string? SerializeValue(object value)
+        public static string? SerializeValue(object? value)
         {
-            if (value == null)
-                return null;
+            if (value is null)
+                return null; // or return "null" depending on how you store audit values
 
-            // Za jednostavne tipove - direktna konverzija
-            if (value is string || value.GetType().IsPrimitive || value is DateTime || value is decimal)
-                return value.ToString() ?? string.Empty;
-
-            // Za complex tipove - JSON serijalizacija
-            try
-            {
-                return System.Text.Json.JsonSerializer.Serialize(value);
-            }
-            catch
-            {
-                return value.ToString() ?? string.Empty;
-            }
+            // Example serialization:
+            return JsonSerializer.Serialize(value);
         }
     }
 }
