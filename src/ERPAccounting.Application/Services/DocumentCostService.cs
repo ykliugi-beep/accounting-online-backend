@@ -68,14 +68,14 @@ public class DocumentCostService : IDocumentCostService
             IDDokument = documentId,
             IDPartner = dto.PartnerId,
             IDVrstaDokumenta = documentTypeCode,
-            IznosBezPDV = dto.AmountNet,
-            IznosPDV = dto.AmountVat,
             DatumValute = dto.DueDate,
             Opis = dto.Description,
             DatumDPO = DateTime.UtcNow,
             BrojDokumenta = $"{documentTypeCode}-{documentId}-{DateTime.UtcNow.Ticks}",
-            IDStatus = 1,
-            NazivTroska = null
+            IDStatus = 1
+            // NOTE: IznosBezPDV and IznosPDV are NOT database columns - they are computed
+            // from CostLineItems. Values from dto.AmountNet and dto.AmountVat should be
+            // used when creating the actual cost line items, not set here.
         };
 
         await _costRepository.AddAsync(entity);
@@ -95,10 +95,11 @@ public class DocumentCostService : IDocumentCostService
 
         entity.IDPartner = dto.PartnerId;
         entity.IDVrstaDokumenta = documentTypeCode;
-        entity.IznosBezPDV = dto.AmountNet;
-        entity.IznosPDV = dto.AmountVat;
         entity.DatumValute = dto.DueDate;
         entity.Opis = dto.Description;
+        // NOTE: IznosBezPDV and IznosPDV are NOT database columns - they are computed
+        // from CostLineItems. Cannot be set directly. To update amounts, modify the
+        // individual cost line items instead.
 
         _costRepository.Update(entity);
         await _unitOfWork.SaveChangesAsync();
@@ -231,9 +232,11 @@ public class DocumentCostService : IDocumentCostService
         switch (dto.DistributionMethodId)
         {
             case 1:
+                // NOTE: IznosBezPDV is computed from CostLineItems - uses loaded data
                 (processed, distributedAmount) = ApplyDistribution(cost.IznosBezPDV, items, item => item.Kolicina ?? 0);
                 break;
             case 2:
+                // NOTE: IznosBezPDV is computed from CostLineItems - uses loaded data
                 (processed, distributedAmount) = ApplyDistribution(cost.IznosBezPDV, items, item => item.Iznos);
                 break;
             case 3:
@@ -373,13 +376,14 @@ public class DocumentCostService : IDocumentCostService
             ? string.Empty
             : Convert.ToBase64String(entity.DokumentTroskoviTimeStamp);
 
+        // NOTE: IznosBezPDV and IznosPDV are computed properties from CostLineItems
         return new DocumentCostDto(
             entity.IDDokumentTroskovi,
             entity.IDDokument,
             entity.IDPartner,
             entity.IDVrstaDokumenta,
-            entity.IznosBezPDV,
-            entity.IznosPDV,
+            entity.IznosBezPDV,  // Computed from CostLineItems.Sum(x => x.Iznos)
+            entity.IznosPDV,     // Computed from CostLineItems.Sum(x => x.VATItems.Sum(v => v.IznosPDV))
             entity.DatumValute ?? entity.DatumDPO,
             entity.Opis,
             etag);
