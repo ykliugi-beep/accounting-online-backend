@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ERPAccounting.Common.Interfaces;
 using ERPAccounting.Domain.Entities;
+using ERPAccounting.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -12,7 +13,7 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
 {
     /// <summary>
     /// Interceptor koji automatski popunjava audit property-je pri SaveChanges().
-    /// Implementira soft delete pattern - DELETE operacije se konvertuju u UPDATE sa IsDeleted = true.
+    /// Implementira soft delete pattern samo za entitete koji podržavaju ISoftDeletable - DELETE operacije se konvertuju u UPDATE sa IsDeleted = true.
     /// </summary>
     public class AuditInterceptor(ICurrentUserService currentUserService) : SaveChangesInterceptor
     {
@@ -81,9 +82,13 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
         {
             entity.CreatedAt = timestamp;
             entity.CreatedBy = username;
-            entity.IsDeleted = false;
             entity.UpdatedAt = timestamp;
             entity.UpdatedBy = username;
+
+            if (entity is ISoftDeletable softDeletable)
+            {
+                softDeletable.IsDeleted = false;
+            }
         }
 
         /// <summary>
@@ -103,9 +108,13 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
         /// </summary>
         private static void HandleDeletedEntity(EntityEntry<BaseEntity> entry, DateTime timestamp, string username)
         {
-            // KLJUČNO: Menjamo state iz Deleted u Modified
-            entry.State = EntityState.Modified;
-            entry.Entity.IsDeleted = true;
+            if (entry.Entity is ISoftDeletable softDeletable)
+            {
+                // KLJUČNO: Menjamo state iz Deleted u Modified samo za soft deletable entitete
+                entry.State = EntityState.Modified;
+                softDeletable.IsDeleted = true;
+            }
+
             entry.Entity.UpdatedAt = timestamp;
             entry.Entity.UpdatedBy = username;
         }

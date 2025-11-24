@@ -46,4 +46,9 @@ public class DocumentCostRepository : IDocumentCostRepository
     {
         _context.DocumentCosts.Update(entity);
     }
+
+    public void Remove(DocumentCost entity)
+    {
+        _context.DocumentCosts.Remove(entity);
+    }
 }

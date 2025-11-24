@@ -19,4 +19,6 @@ public interface IDocumentCostItemRepository
     void Update(DocumentCostLineItem entity);
 
     void UpdateRange(IEnumerable<DocumentCostLineItem> entities);
+
+    void Remove(DocumentCostLineItem entity);
 }

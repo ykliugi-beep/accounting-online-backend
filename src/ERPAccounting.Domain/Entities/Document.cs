@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ERPAccounting.Domain.Interfaces;
 
 namespace ERPAccounting.Domain.Entities;
 
 [Table("tblDokument")]
-public class Document : BaseEntity
+public class Document : BaseEntity, ISoftDeletable
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -117,6 +118,8 @@ public class Document : BaseEntity
     
     [Column("IznosPrevaranti", TypeName = "money")]
     public decimal IznosPrevaranti { get; set; } = 0;
+
+    public bool IsDeleted { get; set; }
     
     [Column("ZavisniTroskoviBezPDVa", TypeName = "money")]
     public decimal ZavisniTroskoviBezPDVa { get; set; } = 0;
