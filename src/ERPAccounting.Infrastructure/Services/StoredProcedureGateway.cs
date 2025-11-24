@@ -134,8 +134,8 @@ public class StoredProcedureGateway : IStoredProcedureGateway
                             IDDokumentTroskovi INT,
                             IDDokumentTroskoviStavka INT NULL,
                             ListaTroskova NVARCHAR(MAX),
-                            Osnovica DECIMAL(19,4),
-                            Pdv DECIMAL(19,4)
+                            Osnovica DECIMAL(19,4) NULL,
+                            Pdv DECIMAL(19,4) NULL
                         );
 
                         INSERT INTO @result
