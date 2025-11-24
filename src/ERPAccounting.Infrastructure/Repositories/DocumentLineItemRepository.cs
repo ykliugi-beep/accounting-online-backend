@@ -19,7 +19,7 @@ public class DocumentLineItemRepository : IDocumentLineItemRepository
     {
         return await _context.DocumentLineItems
             .AsNoTracking()
-            .Where(item => item.IDDokument == documentId && !item.IsDeleted)
+            .Where(item => item.IDDokument == documentId)
             .OrderBy(item => item.IDStavkaDokumenta)
             .ToListAsync(cancellationToken);
     }
@@ -27,7 +27,7 @@ public class DocumentLineItemRepository : IDocumentLineItemRepository
     public async Task<DocumentLineItem?> GetAsync(int documentId, int itemId, bool track = false, CancellationToken cancellationToken = default)
     {
         IQueryable<DocumentLineItem> query = _context.DocumentLineItems
-            .Where(item => item.IDStavkaDokumenta == itemId && item.IDDokument == documentId && !item.IsDeleted);
+            .Where(item => item.IDStavkaDokumenta == itemId && item.IDDokument == documentId);
 
         if (!track)
         {
