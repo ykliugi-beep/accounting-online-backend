@@ -181,21 +181,13 @@ namespace ERPAccounting.Infrastructure.Data
                 .IsRowVersion()
                 .IsConcurrencyToken();
 
-            costEntity.Property(e => e.NazivTroska)
-                .HasColumnType("varchar(255)")
-                .HasMaxLength(255);
-
-            costEntity.Property(e => e.IznosBezPDV)
-                .HasColumnType("money")
-                .HasPrecision(19, 4);
-
-            costEntity.Property(e => e.IznosPDV)
-                .HasColumnType("money")
-                .HasPrecision(19, 4);
-
+            // Kurs column configuration
             costEntity.Property(e => e.Kurs)
                 .HasColumnType("money")
                 .HasPrecision(19, 4);
+
+            // NOTE: IznosBezPDV and IznosPDV are [NotMapped] computed properties
+            // They are calculated from CostLineItems and do NOT exist in the database
 
             // Foreign keys
             costEntity.HasOne(e => e.Document)
