@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ERPAccounting.Common.Interfaces;
 using ERPAccounting.Domain.Entities;
+using ERPAccounting.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -81,9 +82,13 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
         {
             entity.CreatedAt = timestamp;
             entity.CreatedBy = username;
-            entity.IsDeleted = false;
             entity.UpdatedAt = timestamp;
             entity.UpdatedBy = username;
+
+            if (entity is ISoftDeletable softDeletable)
+            {
+                softDeletable.IsDeleted = false;
+            }
         }
 
         /// <summary>
@@ -103,11 +108,14 @@ namespace ERPAccounting.Infrastructure.Persistence.Interceptors
         /// </summary>
         private static void HandleDeletedEntity(EntityEntry<BaseEntity> entry, DateTime timestamp, string username)
         {
-            // KLJUČNO: Menjamo state iz Deleted u Modified
-            entry.State = EntityState.Modified;
-            entry.Entity.IsDeleted = true;
-            entry.Entity.UpdatedAt = timestamp;
-            entry.Entity.UpdatedBy = username;
+            if (entry.Entity is ISoftDeletable softDeletable)
+            {
+                // KLJUČNO: Menjamo state iz Deleted u Modified
+                entry.State = EntityState.Modified;
+                softDeletable.IsDeleted = true;
+                entry.Entity.UpdatedAt = timestamp;
+                entry.Entity.UpdatedBy = username;
+            }
         }
     }
 }

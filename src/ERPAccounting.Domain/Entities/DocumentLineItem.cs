@@ -1,11 +1,12 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ERPAccounting.Domain.Interfaces;
 
 namespace ERPAccounting.Domain.Entities;
 
 [Table("tblStavkaDokumenta")]
-public class DocumentLineItem : BaseEntity
+public class DocumentLineItem : BaseEntity, ISoftDeletable
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -207,7 +208,9 @@ public class DocumentLineItem : BaseEntity
     
     [Column("IDBoja")]
     public int? IDBoja { get; set; }
-    
+
+    public bool IsDeleted { get; set; } = false;
+
     // Navigation
     public virtual Document Document { get; set; } = null!;
 }

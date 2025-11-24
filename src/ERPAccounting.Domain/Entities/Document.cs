@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ERPAccounting.Domain.Interfaces;
 
 namespace ERPAccounting.Domain.Entities;
 
 [Table("tblDokument")]
-public class Document : BaseEntity
+public class Document : BaseEntity, ISoftDeletable
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -268,7 +269,9 @@ public class Document : BaseEntity
     
     [Column("IDMerenje")]
     public int? IDMerenje { get; set; }
-    
+
+    public bool IsDeleted { get; set; } = false;
+
     // Navigation properties
     public virtual ICollection<DocumentLineItem> LineItems { get; set; } = new List<DocumentLineItem>();
     public virtual ICollection<DocumentCost> DependentCosts { get; set; } = new List<DocumentCost>();
