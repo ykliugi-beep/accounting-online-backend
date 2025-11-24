@@ -114,7 +114,36 @@ public class StoredProcedureGateway : IStoredProcedureGateway
         try
         {
             return await _context.Database
-                .SqlQueryRaw<ArticleLookup>("EXEC spArtikalComboUlaz")
+                .SqlQueryRaw<ArticleLookup>(
+                    @"DECLARE @result TABLE (
+                            IDArtikal INT,
+                            SIFRA NVARCHAR(100),
+                            [NAZIV ARTIKLA] NVARCHAR(255),
+                            JM VARCHAR(6),
+                            IDPoreskaStopa CHAR(2),
+                            ProcenatPoreza FLOAT,
+                            Akciza DECIMAL(19,4),
+                            KoeficijentKolicine DECIMAL(19,4),
+                            ImaLot BIT,
+                            OtkupnaCena DECIMAL(19,4) NULL,
+                            PoljoprivredniProizvod BIT
+                        );
+
+                        INSERT INTO @result
+                        EXEC spArtikalComboUlaz;
+
+                        SELECT IDArtikal,
+                               SIFRA,
+                               [NAZIV ARTIKLA],
+                               JM,
+                               IDPoreskaStopa,
+                               ProcenatPoreza,
+                               Akciza,
+                               KoeficijentKolicine,
+                               ImaLot,
+                               OtkupnaCena,
+                               PoljoprivredniProizvod
+                        FROM @result;")
                 .ToListAsync();
         }
         catch (Exception ex)
@@ -134,8 +163,8 @@ public class StoredProcedureGateway : IStoredProcedureGateway
                             IDDokumentTroskovi INT,
                             IDDokumentTroskoviStavka INT NULL,
                             ListaTroskova NVARCHAR(MAX),
-                            Osnovica DECIMAL(19,4),
-                            Pdv DECIMAL(19,4)
+                            Osnovica DECIMAL(19,4) NULL,
+                            Pdv DECIMAL(19,4) NULL
                         );
 
                         INSERT INTO @result

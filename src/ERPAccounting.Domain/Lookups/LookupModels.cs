@@ -13,7 +13,7 @@ public record PartnerLookup(
     [property: Column("ObracunAkciza")] short ObracunAkciza,
     [property: Column("ObracunPorez")] short ObracunPorez,
     [property: Column("IDReferent")] int? IdReferent,
-    [property: Column("SifraPartner")] string? SifraPartner
+    [property: Column("ŠIFRA")] string? SifraPartner
 );
 
 // SP 2: spOrganizacionaJedinicaCombo
@@ -61,11 +61,11 @@ public record ArticleLookup(
     [property: Column("NAZIV ARTIKLA")] string NazivArtikla,
     [property: Column("JM")] string? JedinicaMere,
     [property: Column("IDPoreskaStopa")] string? IdPoreskaStopa,
-    [property: Column("ProcenatPoreza")] decimal ProcenatPoreza,
-    [property: Column("Akciza")] decimal Akciza,
-    [property: Column("KoeficijentKolicine")] decimal KoeficijentKolicine,
+    [property: Column("ProcenatPoreza")] double ProcenatPoreza,
+    [property: Column("Akciza", TypeName = "money")] decimal Akciza,
+    [property: Column("KoeficijentKolicine", TypeName = "money")] decimal KoeficijentKolicine,
     [property: Column("ImaLot")] bool ImaLot,
-    [property: Column("OtkupnaCena")] decimal? OtkupnaCena,
+    [property: Column("OtkupnaCena", TypeName = "money")] decimal? OtkupnaCena,
     [property: Column("PoljoprivredniProizvod")] bool PoljoprivredniProizvod
 );
 
@@ -74,8 +74,8 @@ public record DocumentCostLookup(
     [property: Column("IDDokumentTroskovi")] int IdDokumentTroskovi,
     [property: Column("IDDokumentTroskoviStavka")] int? IdDokumentTroskoviStavka,
     [property: Column("ListaTroskova")] string ListaTroskova,
-    [property: Column("OSNOVICA")] decimal Osnovica,
-    [property: Column("PDV")] decimal Pdv
+    [property: Column("OSNOVICA")] decimal? Osnovica,
+    [property: Column("PDV")] decimal? Pdv
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo

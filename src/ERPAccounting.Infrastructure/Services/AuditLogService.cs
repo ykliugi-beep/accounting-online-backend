@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using ERPAccounting.Application.Common.Interfaces;
+using ERPAccounting.Common.Interfaces;
 using ERPAccounting.Domain.Entities;
 using ERPAccounting.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace ERPAccounting.Infrastructure.Services
 {
@@ -14,14 +16,14 @@ namespace ERPAccounting.Infrastructure.Services
     /// </summary>
     public class AuditLogService : IAuditLogService
     {
-        private readonly AppDbContext _context;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly ILogger<AuditLogService> _logger;
 
         public AuditLogService(
-            AppDbContext context,
+            IDbContextFactory<AppDbContext> contextFactory,
             ILogger<AuditLogService> logger)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _logger = logger;
         }
 
@@ -33,8 +35,10 @@ namespace ERPAccounting.Infrastructure.Services
         {
             try
             {
-                _context.ApiAuditLogs.Add(auditLog);
-                await _context.SaveChangesAsync(default);
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
+                context.ApiAuditLogs.Add(auditLog);
+                await context.SaveChangesAsync(default);
 
                 _logger.LogDebug(
                     "API call logged: {Method} {Endpoint} - {StatusCode} ({ResponseTime}ms)",
@@ -67,6 +71,8 @@ namespace ERPAccounting.Infrastructure.Services
         {
             try
             {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
                 if (changes == null || changes.Count == 0)
                 {
                     _logger.LogWarning(
@@ -87,10 +93,10 @@ namespace ERPAccounting.Infrastructure.Services
                         DataType = change.Value.NewValue?.GetType().Name ?? "null"
                     };
 
-                    _context.ApiAuditLogEntityChanges.Add(entityChange);
+                    context.ApiAuditLogEntityChanges.Add(entityChange);
                 }
 
-                await _context.SaveChangesAsync(default);
+                await context.SaveChangesAsync(default);
 
                 _logger.LogDebug(
                     "Logged {Count} field changes for {EntityType} {EntityId}",
@@ -111,24 +117,13 @@ namespace ERPAccounting.Infrastructure.Services
         /// Helper metoda za serijalizaciju vrednosti u string format.
         /// Rukuje null, complex types, i edge cases.
         /// </summary>
-        private string SerializeValue(object value)
+        public static string? SerializeValue(object? value)
         {
-            if (value == null)
-                return null;
+            if (value is null)
+                return null; // or return "null" depending on how you store audit values
 
-            // Za jednostavne tipove - direktna konverzija
-            if (value is string || value.GetType().IsPrimitive || value is DateTime || value is decimal)
-                return value.ToString();
-
-            // Za complex tipove - JSON serijalizacija
-            try
-            {
-                return System.Text.Json.JsonSerializer.Serialize(value);
-            }
-            catch
-            {
-                return value.ToString();
-            }
+            // Example serialization:
+            return JsonSerializer.Serialize(value);
         }
     }
 }

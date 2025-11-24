@@ -114,7 +114,7 @@ public class DocumentCostService : IDocumentCostService
             return false;
         }
 
-        entity.IsDeleted = true;
+        _costRepository.Remove(entity);
         await _unitOfWork.SaveChangesAsync();
         return true;
     }
@@ -210,7 +210,7 @@ public class DocumentCostService : IDocumentCostService
             return false;
         }
 
-        entity.IsDeleted = true;
+        _costItemRepository.Remove(entity);
         await _unitOfWork.SaveChangesAsync();
         return true;
     }

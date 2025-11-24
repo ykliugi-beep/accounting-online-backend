@@ -155,13 +155,19 @@ public class LookupService : ILookupService
         source.PoljoprivredniProizvod
     );
 
-    private static DocumentCostsListDto MapToDocumentCostDto(DocumentCostLookup source) => new(
-        source.IdDokumentTroskovi,
-        source.IdDokumentTroskoviStavka,
-        source.ListaTroskova,
-        source.Osnovica,
-        source.Pdv
-    );
+    private static DocumentCostsListDto MapToDocumentCostDto(DocumentCostLookup source)
+    {
+        var osnovica = source.Osnovica;
+        var pdv = source.Pdv;
+
+        return new(
+            source.IdDokumentTroskovi,
+            source.IdDokumentTroskoviStavka,
+            source.ListaTroskova,
+            osnovica,
+            pdv
+        );
+    }
 
     private static CostTypeComboDto MapToCostTypeDto(CostTypeLookup source) => new(
         source.IdUlazniRacuniIzvedeni,

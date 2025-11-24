@@ -6,8 +6,8 @@ namespace ERPAccounting.Domain.Entities;
 
 /// <summary>
 /// Bazna klasa za sve entitete sa audit funkcionalnostima.
-/// Audit property-ji su [NotMapped] - postoje u C# objektu ali se NE mapiraju na bazu.
-/// Vrednosti se automatski popunjavaju kroz AuditInterceptor pri SaveChanges().
+/// Većina audit polja su [NotMapped] i popunjavaju se kroz AuditInterceptor pri SaveChanges(),
+/// dok se soft delete primenjuje samo na entitete koji eksplicitno implementiraju ISoftDeletable.
 /// </summary>
 public abstract class BaseEntity : IEntity
 {
@@ -35,10 +35,4 @@ public abstract class BaseEntity : IEntity
     [NotMapped]
     public string? UpdatedBy { get; set; }
 
-    /// <summary>
-    /// Oznaka za soft delete. Entitet nije fizički obrisan iz baze.
-    /// Query filter automatski filtrira IsDeleted = true zapise.
-    /// </summary>
-    [NotMapped]
-    public bool IsDeleted { get; set; } = false;
 }

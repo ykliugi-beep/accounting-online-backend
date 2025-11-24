@@ -60,10 +60,10 @@ public record ArticleComboDto(
     string? JedinicaMere,
     string? IdPoreskaStopa,
     double ProcenatPoreza,
-    double Akciza,
-    double KoeficijentKolicine,
+    decimal Akciza,
+    decimal KoeficijentKolicine,
     bool ImaLot,
-    double? OtkupnaCena,
+    decimal? OtkupnaCena,
     bool PoljoprivredniProizvod
 );
 
@@ -72,8 +72,8 @@ public record DocumentCostsListDto(
     int IdDokumentTroskovi,
     int? IdDokumentTroskoviStavka,
     string ListaTroskova,
-    decimal Osnovica,
-    decimal Pdv
+    decimal? Osnovica,
+    decimal? Pdv
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo

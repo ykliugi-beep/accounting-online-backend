@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ERPAccounting.Domain.Entities;
-using ERPAccounting.Application.Common.Interfaces;
+using ERPAccounting.Common.Interfaces;
+using ERPAccounting.Domain.Interfaces;
 using ERPAccounting.Infrastructure.Persistence.Interceptors;
 
 namespace ERPAccounting.Infrastructure.Data
@@ -56,15 +57,26 @@ namespace ERPAccounting.Infrastructure.Data
             // (ako postoje Configuration klase u projektu, možete koristiti ApplyConfigurationsFromAssembly)
             // modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-            // DODAJ: Global query filter za soft delete
+            // DODAJ: Global query filter za soft delete samo za entitete koji implementiraju ISoftDeletable
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
-                if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+                if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
                 {
+                    modelBuilder.Entity(entityType.ClrType)
+                        .Property<bool>(nameof(ISoftDeletable.IsDeleted))
+                        .HasColumnName("IsDeleted")
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     var parameter = Expression.Parameter(entityType.ClrType, "e");
-                    var property = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
-                    var filter = Expression.Lambda(Expression.Not(property), parameter);
-                    
+                    var isDeletedProperty = Expression.Call(
+                        typeof(EF).GetMethod(nameof(EF.Property), BindingFlags.Static | BindingFlags.Public)!
+                            .MakeGenericMethod(typeof(bool)),
+                        parameter,
+                        Expression.Constant(nameof(ISoftDeletable.IsDeleted)));
+
+                    var filter = Expression.Lambda(Expression.Equal(isDeletedProperty, Expression.Constant(false)), parameter);
+
                     modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
                 }
             }
@@ -90,6 +102,15 @@ namespace ERPAccounting.Infrastructure.Data
                 .WithOne(e => e.Document)
                 .HasForeignKey(e => e.IDDokument)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            documentEntity.HasMany(e => e.AdvanceVATs)
+                .WithOne(e => e.Document)
+                .HasForeignKey(e => e.IDDokument)
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
+
+            modelBuilder.Entity<DocumentAdvanceVAT>()
+                .HasQueryFilter(e => !e.Document.IsDeleted);
 
             // ═══════════════════════════════════════════════════════════════
             // DOCUMENT LINE ITEM KONFIGURACIJA - KRITIČNO ZA KONKURENTNOST
@@ -127,6 +148,22 @@ namespace ERPAccounting.Infrastructure.Data
                 .HasColumnType("money")
                 .HasPrecision(19, 4);
 
+            lineItemEntity.Property(e => e.VrednostObracunPDV)
+                .HasColumnType("decimal(19, 4)")
+                .HasPrecision(19, 4);
+
+            lineItemEntity.Property(e => e.VrednostObracunAkciza)
+                .HasColumnType("decimal(19, 4)")
+                .HasPrecision(19, 4);
+
+            lineItemEntity.Property(e => e.ProizvodnjaKolicina)
+                .HasColumnType("decimal(19, 4)")
+                .HasPrecision(19, 4);
+
+            lineItemEntity.Property(e => e.ProizvodnjaKoeficijentKolicine)
+                .HasColumnType("decimal(19, 4)")
+                .HasPrecision(19, 4);
+
             // Foreign keys
             lineItemEntity.HasOne(e => e.Document)
                 .WithMany(e => e.LineItems)
@@ -143,6 +180,22 @@ namespace ERPAccounting.Infrastructure.Data
             costEntity.Property(e => e.DokumentTroskoviTimeStamp)
                 .IsRowVersion()
                 .IsConcurrencyToken();
+
+            costEntity.Property(e => e.NazivTroska)
+                .HasColumnType("varchar(255)")
+                .HasMaxLength(255);
+
+            costEntity.Property(e => e.IznosBezPDV)
+                .HasColumnType("money")
+                .HasPrecision(19, 4);
+
+            costEntity.Property(e => e.IznosPDV)
+                .HasColumnType("money")
+                .HasPrecision(19, 4);
+
+            costEntity.Property(e => e.Kurs)
+                .HasColumnType("money")
+                .HasPrecision(19, 4);
 
             // Foreign keys
             costEntity.HasOne(e => e.Document)
@@ -180,6 +233,20 @@ namespace ERPAccounting.Infrastructure.Data
                 .WithMany(e => e.CostLineItems)
                 .HasForeignKey(e => e.IDDokumentTroskovi)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            costLineItemEntity.HasMany(e => e.VATItems)
+                .WithOne(e => e.DocumentCostLineItem)
+                .HasForeignKey(e => e.IDDokumentTroskoviStavka)
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
+
+            // ═══════════════════════════════════════════════════════════════
+            // DEPENDENT COST LINE ITEM KONFIGURACIJA
+            var dependentCostLineItemEntity = modelBuilder.Entity<DependentCostLineItem>();
+
+            dependentCostLineItemEntity.Property(e => e.Amount)
+                .HasColumnType("decimal(19, 4)")
+                .HasPrecision(19, 4);
 
             // ═══════════════════════════════════════════════════════════════
             // API AUDIT LOG KONFIGURACIJA

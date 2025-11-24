@@ -17,4 +17,6 @@ public interface IDocumentCostRepository
     Task AddAsync(DocumentCost entity, CancellationToken cancellationToken = default);
 
     void Update(DocumentCost entity);
+
+    void Remove(DocumentCost entity);
 }
