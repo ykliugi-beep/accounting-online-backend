@@ -58,18 +58,16 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
             exception.ExpectedETag,
             exception.CurrentETag);
 
-        var problemDetails = new ProblemDetailsDto
-        {
-            Status = StatusCodes.Status409Conflict,
-            Title = exception.Title,
-            Detail = exception.Detail,
-            ErrorCode = exception.ErrorCode,
-            Instance = context.HttpContext.Request.Path,
-            Errors = new Dictionary<string, string[]>
+        var problemDetails = ProblemDetailsDto.FromException(
+            exception,
+            instance: context.HttpContext.Request.Path)
+            with
             {
-                ["concurrency"] = concurrencyErrors.ToArray()
-            }
-        };
+                Errors = new Dictionary<string, string[]>
+                {
+                    ["concurrency"] = concurrencyErrors.ToArray()
+                }
+            };
 
         context.Result = new ObjectResult(problemDetails)
         {
