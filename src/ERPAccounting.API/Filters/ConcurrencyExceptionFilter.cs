@@ -36,6 +36,20 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
 
     private void HandleConflictException(ExceptionContext context, ConflictException exception)
     {
+        var concurrencyErrors = new List<string>
+        {
+            $"Resource '{exception.ResourceType ?? "Resource"}' has been modified by another user."
+        };
+
+        if (!string.IsNullOrWhiteSpace(exception.ResourceId))
+        {
+            concurrencyErrors.Add($"Resource ID: {exception.ResourceId}");
+        }
+
+        concurrencyErrors.Add($"Expected ETag: {exception.ExpectedETag ?? "N/A"}");
+        concurrencyErrors.Add($"Current ETag: {exception.CurrentETag ?? "N/A"}");
+        concurrencyErrors.Add("Please refresh the entity and try again.");
+
         _logger.LogWarning(
             exception,
             "Concurrency conflict detected: ResourceType={ResourceType}, ResourceId={ResourceId}, ExpectedETag={ExpectedETag}, CurrentETag={CurrentETag}",
@@ -87,6 +101,7 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
         {
             Title = "Concurrency Conflict",
             Status = StatusCodes.Status409Conflict,
+            Title = "Concurrency Conflict",
             Detail = "The record has been modified by another user since it was retrieved.",
             ErrorCode = "DATABASE_CONCURRENCY_CONFLICT",
             Instance = context.HttpContext.Request.Path,
