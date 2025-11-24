@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ERPAccounting.Domain.Entities;
 using ERPAccounting.Common.Interfaces;
+using ERPAccounting.Domain.Interfaces;
 using ERPAccounting.Infrastructure.Persistence.Interceptors;
 
 namespace ERPAccounting.Infrastructure.Data
@@ -56,13 +57,13 @@ namespace ERPAccounting.Infrastructure.Data
             // (ako postoje Configuration klase u projektu, možete koristiti ApplyConfigurationsFromAssembly)
             // modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-            // DODAJ: Global query filter za soft delete
+            // DODAJ: Global query filter za soft delete samo za ISoftDeletable entitete
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
-                if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+                if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
                 {
                     modelBuilder.Entity(entityType.ClrType)
-                        .Property<bool>(nameof(BaseEntity.IsDeleted))
+                        .Property<bool>(nameof(ISoftDeletable.IsDeleted))
                         .HasColumnName("IsDeleted")
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
@@ -72,7 +73,7 @@ namespace ERPAccounting.Infrastructure.Data
                         typeof(EF).GetMethod(nameof(EF.Property), BindingFlags.Static | BindingFlags.Public)!
                             .MakeGenericMethod(typeof(bool)),
                         parameter,
-                        Expression.Constant(nameof(BaseEntity.IsDeleted)));
+                        Expression.Constant(nameof(ISoftDeletable.IsDeleted)));
 
                     var filter = Expression.Lambda(Expression.Equal(isDeletedProperty, Expression.Constant(false)), parameter);
 
@@ -222,9 +223,6 @@ namespace ERPAccounting.Infrastructure.Data
                 .HasForeignKey(e => e.IDDokumentTroskoviStavka)
                 .OnDelete(DeleteBehavior.Cascade)
                 .IsRequired(false);
-
-            modelBuilder.Entity<DocumentCostVAT>()
-                .HasQueryFilter(e => !e.DocumentCostLineItem.IsDeleted);
 
             // ═══════════════════════════════════════════════════════════════
             // DEPENDENT COST LINE ITEM KONFIGURACIJA
