@@ -60,14 +60,20 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
 
         var problemDetails = new ProblemDetailsDto
         {
-            Status = (int)exception.StatusCode,
             Title = exception.Title,
+            Status = StatusCodes.Status409Conflict,
             Detail = exception.Detail,
             ErrorCode = exception.ErrorCode,
             Instance = context.HttpContext.Request.Path,
             Errors = new Dictionary<string, string[]>
             {
-                ["concurrency"] = concurrencyErrors.ToArray()
+                ["concurrency"] = new[]
+                {
+                    $"Resource '{exception.ResourceType ?? "Resource"}' has been modified by another user.",
+                    $"Expected ETag: {exception.ExpectedETag}",
+                    $"Current ETag: {exception.CurrentETag}",
+                    "Please refresh the entity and try again."
+                }
             }
         };
 
@@ -93,9 +99,11 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
 
         var problemDetails = new ProblemDetailsDto
         {
+            Title = "Concurrency Conflict",
             Status = StatusCodes.Status409Conflict,
             Title = "Concurrency Conflict",
             Detail = "The record has been modified by another user since it was retrieved.",
+            ErrorCode = "DATABASE_CONCURRENCY_CONFLICT",
             Instance = context.HttpContext.Request.Path,
             Errors = new Dictionary<string, string[]>
             {
