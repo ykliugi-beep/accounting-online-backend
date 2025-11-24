@@ -19,7 +19,7 @@ public class DocumentCostRepository : IDocumentCostRepository
     {
         return await _context.DocumentCosts
             .AsNoTracking()
-            .Where(cost => cost.IDDokument == documentId && !cost.IsDeleted)
+            .Where(cost => cost.IDDokument == documentId)
             .OrderBy(cost => cost.IDDokumentTroskovi)
             .ToListAsync(cancellationToken);
     }
@@ -27,7 +27,7 @@ public class DocumentCostRepository : IDocumentCostRepository
     public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
     {
         IQueryable<DocumentCost> query = _context.DocumentCosts
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId && !cost.IsDeleted);
+            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
 
         if (!track)
         {

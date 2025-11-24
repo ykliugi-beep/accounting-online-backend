@@ -61,10 +61,16 @@ namespace ERPAccounting.Infrastructure.Data
             {
                 if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
                 {
+                    modelBuilder.Entity(entityType.ClrType)
+                        .Property<bool>(nameof(BaseEntity.IsDeleted))
+                        .HasColumnName("IsDeleted")
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     var parameter = Expression.Parameter(entityType.ClrType, "e");
                     var property = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
                     var filter = Expression.Lambda(Expression.Not(property), parameter);
-                    
+
                     modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
                 }
             }
