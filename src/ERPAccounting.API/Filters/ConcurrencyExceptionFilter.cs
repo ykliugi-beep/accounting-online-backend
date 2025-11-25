@@ -36,20 +36,6 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
 
     private void HandleConflictException(ExceptionContext context, ConflictException exception)
     {
-        var concurrencyErrors = new List<string>
-        {
-            $"Resource '{exception.ResourceType ?? "Resource"}' has been modified by another user."
-        };
-
-        if (!string.IsNullOrWhiteSpace(exception.ResourceId))
-        {
-            concurrencyErrors.Add($"Resource ID: {exception.ResourceId}");
-        }
-
-        concurrencyErrors.Add($"Expected ETag: {exception.ExpectedETag ?? "N/A"}");
-        concurrencyErrors.Add($"Current ETag: {exception.CurrentETag ?? "N/A"}");
-        concurrencyErrors.Add("Please refresh the entity and try again.");
-
         _logger.LogWarning(
             exception,
             "Concurrency conflict detected: ResourceType={ResourceType}, ResourceId={ResourceId}, ExpectedETag={ExpectedETag}, CurrentETag={CurrentETag}",
@@ -58,24 +44,29 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
             exception.ExpectedETag,
             exception.CurrentETag);
 
-        var problemDetails = new ProblemDetailsDto
+        var concurrencyErrors = new List<string>
         {
-            Title = exception.Title,
-            Status = StatusCodes.Status409Conflict,
-            Detail = exception.Detail,
-            ErrorCode = exception.ErrorCode,
-            Instance = context.HttpContext.Request.Path,
-            Errors = new Dictionary<string, string[]>
-            {
-                ["concurrency"] = new[]
-                {
-                    $"Resource '{exception.ResourceType ?? "Resource"}' has been modified by another user.",
-                    $"Expected ETag: {exception.ExpectedETag}",
-                    $"Current ETag: {exception.CurrentETag}",
-                    "Please refresh the entity and try again."
-                }
-            }
+            $"Resource '{exception.ResourceType ?? "Resource"}' has been modified by another user.",
+            $"Expected ETag: {exception.ExpectedETag ?? "N/A"}",
+            $"Current ETag: {exception.CurrentETag ?? "N/A"}",
+            "Please refresh the entity and try again."
         };
+
+        if (!string.IsNullOrWhiteSpace(exception.ResourceId))
+        {
+            concurrencyErrors.Insert(1, $"Resource ID: {exception.ResourceId}");
+        }
+
+        var problemDetails = ProblemDetailsDto.FromException(
+            exception,
+            context.HttpContext.Request.Path)
+            with
+            {
+                Errors = new Dictionary<string, string[]>
+                {
+                    ["concurrency"] = concurrencyErrors.ToArray()
+                }
+            };
 
         context.Result = new ObjectResult(problemDetails)
         {
@@ -97,15 +88,13 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
             exception,
             "Database concurrency exception detected");
 
-        var problemDetails = new ProblemDetailsDto
-        {
-            Title = "Concurrency Conflict",
-            Status = StatusCodes.Status409Conflict,
-            Title = "Concurrency Conflict",
-            Detail = "The record has been modified by another user since it was retrieved.",
-            ErrorCode = "DATABASE_CONCURRENCY_CONFLICT",
-            Instance = context.HttpContext.Request.Path,
-            Errors = new Dictionary<string, string[]>
+        var problemDetails = ProblemDetailsDto.Create(
+            StatusCodes.Status409Conflict,
+            "Concurrency Conflict",
+            "The record has been modified by another user since it was retrieved.",
+            context.HttpContext.Request.Path,
+            "DATABASE_CONCURRENCY_CONFLICT",
+            new Dictionary<string, string[]>
             {
                 ["concurrency"] = new[]
                 {
@@ -113,8 +102,7 @@ public class ConcurrencyExceptionFilter : IExceptionFilter
                     "The record may have been modified or deleted by another user.",
                     "Please refresh the entity and try again."
                 }
-            }
-        };
+            });
 
         context.Result = new ObjectResult(problemDetails)
         {
