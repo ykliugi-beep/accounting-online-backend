@@ -81,7 +81,7 @@ public class DocumentCostService : IDocumentCostService
         await _costRepository.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
-        return MapToDto(entity);
+        return MapToDto(entity, dto.AmountNet, dto.AmountVat);
     }
 
     public async Task<DocumentCostDto> UpdateCostAsync(int documentId, int costId, byte[] expectedRowVersion, UpdateDocumentCostDto dto)
@@ -370,11 +370,14 @@ public class DocumentCostService : IDocumentCostService
         }
     }
 
-    private static DocumentCostDto MapToDto(DocumentCost entity)
+    private static DocumentCostDto MapToDto(DocumentCost entity, decimal? amountNetOverride = null, decimal? amountVatOverride = null)
     {
         var etag = entity.DokumentTroskoviTimeStamp is null
             ? string.Empty
             : Convert.ToBase64String(entity.DokumentTroskoviTimeStamp);
+
+        var amountNet = amountNetOverride ?? entity.IznosBezPDV;
+        var amountVat = amountVatOverride ?? entity.IznosPDV;
 
         // NOTE: IznosBezPDV and IznosPDV are computed properties from CostLineItems
         return new DocumentCostDto(
@@ -382,8 +385,8 @@ public class DocumentCostService : IDocumentCostService
             entity.IDDokument,
             entity.IDPartner,
             entity.IDVrstaDokumenta,
-            entity.IznosBezPDV,  // Computed from CostLineItems.Sum(x => x.Iznos)
-            entity.IznosPDV,     // Computed from CostLineItems.Sum(x => x.VATItems.Sum(v => v.IznosPDV))
+            amountNet,  // Computed from CostLineItems.Sum(x => x.Iznos) or provided override
+            amountVat,  // Computed from CostLineItems.Sum(x => x.VATItems.Sum(v => v.IznosPDV)) or provided override
             entity.DatumValute ?? entity.DatumDPO,
             entity.Opis,
             etag);
