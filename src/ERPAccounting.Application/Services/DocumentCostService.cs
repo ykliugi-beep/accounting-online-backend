@@ -104,7 +104,6 @@ public class DocumentCostService : IDocumentCostService
         entity.IDValuta = dto.CurrencyId;
         entity.Kurs = dto.ExchangeRate;
 
-        _costRepository.Update(entity);
         await _unitOfWork.SaveChangesAsync();
 
         return MapToDto(entity);
