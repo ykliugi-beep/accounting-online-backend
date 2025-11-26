@@ -38,7 +38,7 @@ public class DocumentCostRepository : IDocumentCostRepository
             query = query.AsNoTracking();
         }
 
-        return await query.FirstOrDefaultAsync(cancellationToken);
+        return query;
     }
 
     public async Task AddAsync(DocumentCost entity, CancellationToken cancellationToken = default)
