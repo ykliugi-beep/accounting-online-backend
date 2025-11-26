@@ -26,12 +26,7 @@ public class DocumentCostRepository : IDocumentCostRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<DocumentCost?> GetAsync(
-        int documentId,
-        int costId,
-        bool track = false,
-        bool includeChildren = false,
-        CancellationToken cancellationToken = default)
+    public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
     {
         if (track)
         {
@@ -49,7 +44,8 @@ public class DocumentCostRepository : IDocumentCostRepository
         {
             query = query
                 .Include(cost => cost.CostLineItems)
-                    .ThenInclude(item => item.VATItems);
+                    .ThenInclude(item => item.VATItems)
+                .AsNoTracking();
         }
 
         return await query
