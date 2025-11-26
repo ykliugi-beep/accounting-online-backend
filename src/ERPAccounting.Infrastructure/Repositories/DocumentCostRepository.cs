@@ -26,16 +26,20 @@ public class DocumentCostRepository : IDocumentCostRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<DocumentCost?> GetAsync(
-        int documentId,
-        int costId,
-        bool track = false,
-        bool includeChildren = false,
-        CancellationToken cancellationToken = default)
+    public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
     {
-        IQueryable<DocumentCost> query = _context.DocumentCosts
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
+        if (track)
+        {
+            return await _context.DocumentCosts
+                .AsTracking()
+                .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
 
+        IQueryable<DocumentCost> query = _context.DocumentCosts;
+
+        // Avoid loading child collections on tracked queries to prevent marking the full graph as modified
+        // when only the header needs updating.
         if (includeChildren && !track)
         {
             query = query
@@ -44,10 +48,35 @@ public class DocumentCostRepository : IDocumentCostRepository
                 .AsNoTracking();
         }
 
-        query = track ? query.AsTracking() : query.AsNoTracking();
+        return await query
+            .AsNoTracking()
+            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<DocumentCost?> GetDetailedAsync(
+        int documentId,
+        int costId,
+        bool track = false,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.DocumentCosts
+            .Include(cost => cost.CostLineItems)
+                .ThenInclude(item => item.VATItems)
+            .AsSplitQuery()
+            .AsQueryable();
+
+        if (track)
+        {
+            return await query
+                .AsTracking()
+                .FirstOrDefaultAsync(cancellationToken);
+        }
 
         return await query
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
+            .Include(cost => cost.CostLineItems)
+                .ThenInclude(item => item.VATItems)
+            .AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -58,7 +87,20 @@ public class DocumentCostRepository : IDocumentCostRepository
 
     public void Update(DocumentCost entity)
     {
+        _context.DocumentCosts.Attach(entity);
+
+        // Ensure only the header is marked as modified; keep loaded cost lines/VAT items untouched.
         _context.Entry(entity).State = EntityState.Modified;
+        foreach (var lineItem in entity.CostLineItems)
+        {
+            var lineEntry = _context.Entry(lineItem);
+            lineEntry.State = EntityState.Unchanged;
+
+            foreach (var vatItem in lineItem.VATItems)
+            {
+                _context.Entry(vatItem).State = EntityState.Unchanged;
+            }
+        }
     }
 
     public void Remove(DocumentCost entity)

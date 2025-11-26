@@ -20,7 +20,8 @@ public class DocumentCostItemRepository : IDocumentCostItemRepository
         IQueryable<DocumentCostLineItem> query = _context.DocumentCostLineItems
             .Where(item => item.IDDokumentTroskovi == costId)
             .Include(item => item.VATItems)
-            .OrderBy(item => item.IDDokumentTroskoviStavka);
+            .OrderBy(item => item.IDDokumentTroskoviStavka)
+            .AsSplitQuery();
 
         if (!track)
         {
@@ -34,7 +35,8 @@ public class DocumentCostItemRepository : IDocumentCostItemRepository
     {
         IQueryable<DocumentCostLineItem> query = _context.DocumentCostLineItems
             .Where(item => item.IDDokumentTroskoviStavka == itemId && item.IDDokumentTroskovi == costId)
-            .Include(item => item.VATItems);
+            .Include(item => item.VATItems)
+            .AsSplitQuery();
 
         if (!track)
         {

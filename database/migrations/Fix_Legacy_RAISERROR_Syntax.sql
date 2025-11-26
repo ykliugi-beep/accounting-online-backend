@@ -153,7 +153,8 @@ DECLARE @OriginalDef NVARCHAR(MAX);
 DECLARE @NewDef NVARCHAR(MAX);
 DECLARE @Counter INT = 0;
 DECLARE @CRLF NCHAR(2) = CHAR(13) + CHAR(10);
-DECLARE @LF NCHAR(1) = CHAR(10);
+DECLARE @LineBreak NCHAR(1) = CHAR(10);
+DECLARE @DoubleTab NCHAR(2) = REPLICATE(CHAR(9), 2);
 
 DECLARE trigger_cursor CURSOR FOR
 SELECT 
@@ -183,6 +184,9 @@ BEGIN
     
     -- Replace old RAISERROR syntax with new THROW syntax
     SET @NewDef = @OriginalDef;
+
+    -- Normalize line endings so replacements don't miss CRLF vs LF differences
+    SET @NewDef = REPLACE(REPLACE(@NewDef, @CRLF, @LineBreak), CHAR(13), @LineBreak);
     
     -- Pattern 1: raiserror 44447 'message'
     SET @NewDef = REPLACE(@NewDef, 
@@ -216,6 +220,21 @@ BEGIN
         'RAISERROR 44449 ''', 
         'THROW 50004, ''');
     
+    -- Add state parameter (required for THROW)
+    -- Find the closing quote and add , 1; if not already there
+    SET @NewDef = REPLACE(@NewDef,
+        '''' + @LineBreak + @DoubleTab + 'rollback tran',
+        ''', 1;' + @LineBreak + @DoubleTab + '-- ROLLBACK is automatic with THROW');
+    SET @NewDef = REPLACE(@NewDef,
+        '''' + @LineBreak + @DoubleTab + 'ROLLBACK TRAN',
+        ''', 1;' + @LineBreak + @DoubleTab + '-- ROLLBACK is automatic with THROW');
+    SET @NewDef = REPLACE(@NewDef,
+        '''' + @LineBreak + 'rollback tran',
+        ''', 1;' + @LineBreak + '-- ROLLBACK is automatic with THROW');
+    SET @NewDef = REPLACE(@NewDef,
+        '''' + @LineBreak + 'ROLLBACK TRAN',
+        ''', 1;' + @LineBreak + '-- ROLLBACK is automatic with THROW');
+
     -- If a THROW message ends the line without a state, append it safely per line
     DECLARE @ProcessedDef NVARCHAR(MAX) = N'';
     DECLARE @Remaining NVARCHAR(MAX) = @NewDef;
@@ -231,24 +250,7 @@ BEGIN
 
     WHILE LEN(@Remaining) > 0
     BEGIN
-        DECLARE @NextCrlf INT = CHARINDEX(@CRLF, @Remaining);
-        DECLARE @NextLf INT = CHARINDEX(@LF, @Remaining);
-
-        IF @NextCrlf > 0 AND (@NextLf = 0 OR @NextCrlf < @NextLf)
-        BEGIN
-            SET @LineBreakPosition = @NextCrlf;
-            SET @LineBreakLength = LEN(@CRLF);
-        END
-        ELSE IF @NextLf > 0
-        BEGIN
-            SET @LineBreakPosition = @NextLf;
-            SET @LineBreakLength = LEN(@LF);
-        END
-        ELSE
-        BEGIN
-            SET @LineBreakPosition = 0;
-            SET @LineBreakLength = 0;
-        END
+        SET @LineBreakPosition = CHARINDEX(@LineBreak, @Remaining);
 
         IF @LineBreakPosition = 0
         BEGIN
@@ -258,7 +260,7 @@ BEGIN
         ELSE
         BEGIN
             SET @Line = SUBSTRING(@Remaining, 1, @LineBreakPosition - 1);
-            SET @Remaining = SUBSTRING(@Remaining, @LineBreakPosition + @LineBreakLength, LEN(@Remaining));
+            SET @Remaining = SUBSTRING(@Remaining, @LineBreakPosition + LEN(@LineBreak), LEN(@Remaining));
         END
 
         SET @NormalizedLine = LTRIM(RTRIM(@Line));
@@ -297,10 +299,38 @@ BEGIN
         IF @ProcessedDef = N''
             SET @ProcessedDef = @Line;
         ELSE
-            SET @ProcessedDef = @ProcessedDef + @CRLF + @Line;
+            SET @ProcessedDef = @ProcessedDef + @LineBreak + @Line;
     END
 
-    SET @NewDef = @ProcessedDef;
+    -- Normalize back to CRLF for the generated ALTER statements
+    SET @NewDef = REPLACE(@ProcessedDef, @LineBreak, @CRLF);
+
+    -- Failsafe: ensure every THROW 5000x call has a state argument even if line parsing missed it
+    DECLARE @SearchPosition INT = 1;
+    DECLARE @ThrowPosition INT;
+    DECLARE @SemicolonPosition INT;
+    DECLARE @Segment NVARCHAR(MAX);
+
+    WHILE @SearchPosition > 0 AND @SearchPosition <= LEN(@NewDef)
+    BEGIN
+        SET @ThrowPosition = PATINDEX('%THROW 5000[1-4], ''%''%', SUBSTRING(@NewDef, @SearchPosition, LEN(@NewDef)));
+
+        IF @ThrowPosition = 0
+            BREAK;
+
+        SET @ThrowPosition = @ThrowPosition + @SearchPosition - 1;
+        SET @SemicolonPosition = CHARINDEX(';', @NewDef, @ThrowPosition);
+
+        IF @SemicolonPosition = 0
+            BREAK;
+
+        SET @Segment = SUBSTRING(@NewDef, @ThrowPosition, @SemicolonPosition - @ThrowPosition + 1);
+
+        IF @Segment NOT LIKE '%'', [0-9]%'
+            SET @NewDef = STUFF(@NewDef, @SemicolonPosition, 1, ', 1;');
+
+        SET @SearchPosition = @ThrowPosition + 1;
+    END
     
     -- Print the ALTER statement
     PRINT '-- ============================================================';
