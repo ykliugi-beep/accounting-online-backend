@@ -43,7 +43,9 @@ public class DocumentCostRepository : IDocumentCostRepository
 
         IQueryable<DocumentCost> query = _context.DocumentCosts;
 
-        if (includeChildren)
+        // Avoid loading child collections on tracked queries to prevent marking the full graph as modified
+        // when only the header needs updating.
+        if (includeChildren && !track)
         {
             query = query
                 .Include(cost => cost.CostLineItems)
@@ -64,7 +66,19 @@ public class DocumentCostRepository : IDocumentCostRepository
     public void Update(DocumentCost entity)
     {
         _context.DocumentCosts.Attach(entity);
+
+        // Ensure only the header is marked as modified; keep loaded cost lines/VAT items untouched.
         _context.Entry(entity).State = EntityState.Modified;
+        foreach (var lineItem in entity.CostLineItems)
+        {
+            var lineEntry = _context.Entry(lineItem);
+            lineEntry.State = EntityState.Unchanged;
+
+            foreach (var vatItem in lineItem.VATItems)
+            {
+                _context.Entry(vatItem).State = EntityState.Unchanged;
+            }
+        }
     }
 
     public void Remove(DocumentCost entity)
