@@ -29,13 +29,14 @@ public class DocumentCostRepository : IDocumentCostRepository
     public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
     {
         IQueryable<DocumentCost> query = _context.DocumentCosts
-            .Include(cost => cost.CostLineItems)
-                .ThenInclude(item => item.VATItems)
             .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
 
         if (!track)
         {
-            query = query.AsNoTracking();
+            query = query
+                .Include(cost => cost.CostLineItems)
+                    .ThenInclude(item => item.VATItems)
+                .AsNoTracking();
         }
 
         return await query.FirstOrDefaultAsync(cancellationToken);
