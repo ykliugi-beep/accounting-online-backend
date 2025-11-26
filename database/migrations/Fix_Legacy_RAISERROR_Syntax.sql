@@ -153,7 +153,6 @@ DECLARE @OriginalDef NVARCHAR(MAX);
 DECLARE @NewDef NVARCHAR(MAX);
 DECLARE @Counter INT = 0;
 DECLARE @CRLF NCHAR(2) = CHAR(13) + CHAR(10);
-DECLARE @DoubleTab NCHAR(2) = REPLICATE(CHAR(9), 2);
 
 DECLARE trigger_cursor CURSOR FOR
 SELECT 
@@ -253,7 +252,8 @@ BEGIN
         END
         ELSE
         BEGIN
-            IF @NormalizedLine LIKE 'THROW [0-9][0-9][0-9][0-9][0-9], ''%' AND @NormalizedLine NOT LIKE 'THROW%''%, [0-9]%'
+            IF PATINDEX('THROW [0-9][0-9][0-9][0-9][0-9], ''%''', @NormalizedLine) = 1
+               AND @NormalizedLine NOT LIKE 'THROW%''%, [0-9]%'
             BEGIN
                 SET @TrailingWhitespace = RIGHT(@Line, LEN(@Line) - LEN(RTRIM(@Line)));
                 SET @TrimmedLine = RTRIM(@Line);
