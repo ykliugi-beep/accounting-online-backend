@@ -48,7 +48,7 @@ public class DocumentCostRepository : IDocumentCostRepository
 
     public void Update(DocumentCost entity)
     {
-        _context.DocumentCosts.Update(entity);
+        _context.Entry(entity).State = EntityState.Modified;
     }
 
     public void Remove(DocumentCost entity)
