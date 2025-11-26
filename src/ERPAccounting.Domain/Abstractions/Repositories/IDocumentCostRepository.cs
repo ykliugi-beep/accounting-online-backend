@@ -12,7 +12,12 @@ public interface IDocumentCostRepository
 {
     Task<IReadOnlyList<DocumentCost>> GetByDocumentAsync(int documentId, CancellationToken cancellationToken = default);
 
-    Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default);
+    Task<DocumentCost?> GetAsync(
+        int documentId,
+        int costId,
+        bool track = false,
+        bool includeChildren = false,
+        CancellationToken cancellationToken = default);
 
     Task AddAsync(DocumentCost entity, CancellationToken cancellationToken = default);
 

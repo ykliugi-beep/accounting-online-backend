@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using ERPAccounting.Application.DTOs.Costs;
 using ERPAccounting.Common.Constants;
 using ERPAccounting.Common.Exceptions;
@@ -53,7 +55,7 @@ public class DocumentCostService : IDocumentCostService
 
     public async Task<DocumentCostDto?> GetCostByIdAsync(int documentId, int costId)
     {
-        var entity = await _costRepository.GetAsync(documentId, costId);
+        var entity = await _costRepository.GetAsync(documentId, costId, includeChildren: true);
         return entity is null ? null : MapToDto(entity);
     }
 
@@ -68,20 +70,19 @@ public class DocumentCostService : IDocumentCostService
             IDDokument = documentId,
             IDPartner = dto.PartnerId,
             IDVrstaDokumenta = documentTypeCode,
-            DatumValute = dto.DueDate,
+            BrojDokumenta = dto.DocumentNumber,
+            DatumDPO = dto.DueDate,
+            DatumValute = dto.CurrencyDate,
             Opis = dto.Description,
-            DatumDPO = DateTime.UtcNow,
-            BrojDokumenta = $"{documentTypeCode}-{documentId}-{DateTime.UtcNow.Ticks}",
-            IDStatus = 1
-            // NOTE: IznosBezPDV and IznosPDV are NOT database columns - they are computed
-            // from CostLineItems. Values from dto.AmountNet and dto.AmountVat should be
-            // used when creating the actual cost line items, not set here.
+            IDStatus = dto.StatusId,
+            IDValuta = dto.CurrencyId,
+            Kurs = dto.ExchangeRate
         };
 
         await _costRepository.AddAsync(entity);
         await _unitOfWork.SaveChangesAsync();
 
-        return MapToDto(entity, dto.AmountNet, dto.AmountVat);
+        return MapToDto(entity);
     }
 
     public async Task<DocumentCostDto> UpdateCostAsync(int documentId, int costId, byte[] expectedRowVersion, UpdateDocumentCostDto dto)
@@ -95,13 +96,14 @@ public class DocumentCostService : IDocumentCostService
 
         entity.IDPartner = dto.PartnerId;
         entity.IDVrstaDokumenta = documentTypeCode;
-        entity.DatumValute = dto.DueDate;
+        entity.BrojDokumenta = dto.DocumentNumber;
+        entity.DatumDPO = dto.DueDate;
+        entity.DatumValute = dto.CurrencyDate;
         entity.Opis = dto.Description;
-        // NOTE: IznosBezPDV and IznosPDV are NOT database columns - they are computed
-        // from CostLineItems. Cannot be set directly. To update amounts, modify the
-        // individual cost line items instead.
+        entity.IDStatus = dto.StatusId;
+        entity.IDValuta = dto.CurrencyId;
+        entity.Kurs = dto.ExchangeRate;
 
-        _costRepository.Update(entity);
         await _unitOfWork.SaveChangesAsync();
 
         return MapToDto(entity);
@@ -142,15 +144,25 @@ public class DocumentCostService : IDocumentCostService
         var entity = new DocumentCostLineItem
         {
             IDDokumentTroskovi = costId,
-            IDUlazniRacuniIzvedeni = dto.ArticleId,
+            IDUlazniRacuniIzvedeni = dto.CostTypeId,
+            IDNacinDeljenjaTroskova = dto.DistributionMethodId,
+            Iznos = dto.Amount,
+            SveStavke = dto.ApplyToAllItems,
+            IDStatus = dto.StatusId,
+            ObracunPorezTroskovi = dto.CalculateTaxOnCost ? 1 : 0,
+            DodajPDVNaTroskove = dto.AddVatToCost ? 1 : 0,
+            IznosValuta = dto.CurrencyAmount,
+            Gotovina = dto.CashAmount ?? 0,
+            Kartica = dto.CardAmount ?? 0,
+            Virman = dto.WireTransferAmount ?? 0,
             Kolicina = dto.Quantity,
-            Iznos = dto.AmountNet,
-            IznosValuta = dto.AmountVat,
-            IDNacinDeljenjaTroskova = dto.TaxRateId,
-            // NOTE: Napomena property does not exist in DocumentCostLineItem entity
-            // If notes are needed, store in DocumentCost.Opis or add column to database
-            SveStavke = false,
-            IDStatus = 1
+            VATItems = (dto.VatItems ?? new List<CostItemVatDto>())
+                .Select(v => new DocumentCostVAT
+                {
+                    IDPoreskaStopa = v.TaxRateId,
+                    IznosPDV = v.VatAmount
+                })
+                .ToList()
         };
 
         await _costItemRepository.AddAsync(entity);
@@ -172,29 +184,65 @@ public class DocumentCostService : IDocumentCostService
 
         EnsureRowVersion(entity.DokumentTroskoviStavkaTimeStamp, expectedRowVersion, itemId, nameof(DocumentCostLineItem));
 
+        if (dto.CostTypeId.HasValue)
+        {
+            entity.IDUlazniRacuniIzvedeni = dto.CostTypeId.Value;
+        }
+
+        if (dto.DistributionMethodId.HasValue)
+        {
+            entity.IDNacinDeljenjaTroskova = dto.DistributionMethodId.Value;
+        }
+
+        if (dto.Amount.HasValue)
+        {
+            entity.Iznos = dto.Amount.Value;
+        }
+
+        if (dto.ApplyToAllItems.HasValue)
+        {
+            entity.SveStavke = dto.ApplyToAllItems.Value;
+        }
+
+        if (dto.StatusId.HasValue)
+        {
+            entity.IDStatus = dto.StatusId.Value;
+        }
+
+        if (dto.CalculateTaxOnCost.HasValue)
+        {
+            entity.ObracunPorezTroskovi = dto.CalculateTaxOnCost.Value ? 1 : 0;
+        }
+
+        if (dto.AddVatToCost.HasValue)
+        {
+            entity.DodajPDVNaTroskove = dto.AddVatToCost.Value ? 1 : 0;
+        }
+
+        if (dto.CurrencyAmount.HasValue)
+        {
+            entity.IznosValuta = dto.CurrencyAmount.Value;
+        }
+
+        if (dto.CashAmount.HasValue)
+        {
+            entity.Gotovina = dto.CashAmount.Value;
+        }
+
+        if (dto.CardAmount.HasValue)
+        {
+            entity.Kartica = dto.CardAmount.Value;
+        }
+
+        if (dto.WireTransferAmount.HasValue)
+        {
+            entity.Virman = dto.WireTransferAmount.Value;
+        }
+
         if (dto.Quantity.HasValue)
         {
             entity.Kolicina = dto.Quantity.Value;
         }
-
-        if (dto.AmountNet.HasValue)
-        {
-            entity.Iznos = dto.AmountNet.Value;
-        }
-
-        if (dto.AmountVat.HasValue)
-        {
-            entity.IznosValuta = dto.AmountVat.Value;
-        }
-
-        if (dto.TaxRateId.HasValue)
-        {
-            entity.IDNacinDeljenjaTroskova = dto.TaxRateId.Value;
-        }
-
-        // NOTE: Napomena property does not exist in DocumentCostLineItem entity
-        // If notes functionality is needed, database schema needs to be updated
-        // or notes should be stored at DocumentCost level in Opis field
 
         _costItemRepository.Update(entity);
         await _unitOfWork.SaveChangesAsync();
@@ -286,7 +334,7 @@ public class DocumentCostService : IDocumentCostService
 
             if (i == items.Count - 1)
             {
-            share = totalAmount - distributed;
+                share = totalAmount - distributed;
             }
 
             items[i].Iznos = share;
@@ -333,7 +381,7 @@ public class DocumentCostService : IDocumentCostService
 
     private async Task<DocumentCost> EnsureCostExistsAsync(int documentId, int costId, bool track = false)
     {
-        var entity = await _costRepository.GetAsync(documentId, costId, track);
+        var entity = await _costRepository.GetAsync(documentId, costId, includeChildren: true);
         if (entity is null)
         {
             throw new NotFoundException(ErrorMessages.DocumentCostNotFound, costId.ToString(), nameof(DocumentCost));
@@ -373,26 +421,34 @@ public class DocumentCostService : IDocumentCostService
         }
     }
 
-    private static DocumentCostDto MapToDto(DocumentCost entity, decimal? amountNetOverride = null, decimal? amountVatOverride = null)
+    private static DocumentCostDto MapToDto(DocumentCost entity)
     {
         var etag = entity.DokumentTroskoviTimeStamp is null
             ? string.Empty
             : Convert.ToBase64String(entity.DokumentTroskoviTimeStamp);
 
-        var amountNet = amountNetOverride ?? entity.IznosBezPDV;
-        var amountVat = amountVatOverride ?? entity.IznosPDV;
+        var costLineItems = entity.CostLineItems?.ToList() ?? new List<DocumentCostLineItem>();
+        var mappedItems = costLineItems.Select(MapToItemDto).ToList();
+        var totalNet = mappedItems.Sum(item => item.Amount);
+        var totalVat = mappedItems.Sum(item => item.TotalVat);
 
-        // NOTE: IznosBezPDV and IznosPDV are computed properties from CostLineItems
         return new DocumentCostDto(
-            entity.IDDokumentTroskovi,
-            entity.IDDokument,
-            entity.IDPartner,
-            entity.IDVrstaDokumenta,
-            amountNet,  // Computed from CostLineItems.Sum(x => x.Iznos) or provided override
-            amountVat,  // Computed from CostLineItems.Sum(x => x.VATItems.Sum(v => v.IznosPDV)) or provided override
-            entity.DatumValute ?? entity.DatumDPO,
-            entity.Opis,
-            etag);
+            Id: entity.IDDokumentTroskovi,
+            DocumentId: entity.IDDokument,
+            PartnerId: entity.IDPartner,
+            PartnerName: string.Empty,
+            DocumentTypeCode: entity.IDVrstaDokumenta,
+            DocumentNumber: entity.BrojDokumenta,
+            DueDate: entity.DatumDPO,
+            CurrencyDate: entity.DatumValute,
+            Description: entity.Opis,
+            StatusId: entity.IDStatus,
+            CurrencyId: entity.IDValuta,
+            ExchangeRate: entity.Kurs,
+            TotalAmountNet: totalNet,
+            TotalAmountVat: totalVat,
+            Items: mappedItems,
+            ETag: etag);
     }
 
     private static DocumentCostItemDto MapToItemDto(DocumentCostLineItem entity)
@@ -401,17 +457,36 @@ public class DocumentCostService : IDocumentCostService
             ? string.Empty
             : Convert.ToBase64String(entity.DokumentTroskoviStavkaTimeStamp);
 
-        // NOTE: Napomena property does not exist in DocumentCostLineItem entity
-        // Return null for Note field in DTO until database schema is updated
+        var vatItems = (entity.VATItems ?? new List<DocumentCostVAT>())
+            .Select(v => new CostItemVatResponseDto(
+                v.IDDokumentTroskoviStavkaPDV,
+                v.IDPoreskaStopa,
+                string.Empty,
+                0,
+                v.IznosPDV))
+            .ToList();
+
+        var totalVat = vatItems.Sum(v => v.VatAmount);
+
         return new DocumentCostItemDto(
-            entity.IDDokumentTroskoviStavka,
-            entity.IDDokumentTroskovi,
-            entity.IDUlazniRacuniIzvedeni,
-            entity.Kolicina ?? 0,
-            entity.Iznos,
-            entity.IznosValuta ?? 0,
-            entity.IDNacinDeljenjaTroskova,
-            null, // Note field - Napomena does not exist in entity
-            etag);
+            Id: entity.IDDokumentTroskoviStavka,
+            DocumentCostId: entity.IDDokumentTroskovi,
+            CostTypeId: entity.IDUlazniRacuniIzvedeni,
+            CostTypeName: string.Empty,
+            DistributionMethodId: entity.IDNacinDeljenjaTroskova,
+            DistributionMethodName: string.Empty,
+            Amount: entity.Iznos,
+            ApplyToAllItems: entity.SveStavke,
+            StatusId: entity.IDStatus,
+            CalculateTaxOnCost: entity.ObracunPorezTroskovi == 1,
+            AddVatToCost: entity.DodajPDVNaTroskove == 1,
+            CurrencyAmount: entity.IznosValuta,
+            CashAmount: entity.Gotovina,
+            CardAmount: entity.Kartica,
+            WireTransferAmount: entity.Virman,
+            Quantity: entity.Kolicina,
+            TotalVat: totalVat,
+            VatItems: vatItems,
+            ETag: etag);
     }
 }
