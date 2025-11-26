@@ -26,15 +26,12 @@ public class DocumentCostRepository : IDocumentCostRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<DocumentCost?> GetAsync(
-        int documentId,
-        int costId,
-        bool track = false,
-        bool includeChildren = false,
-        CancellationToken cancellationToken = default)
+    public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
     {
         IQueryable<DocumentCost> query = _context.DocumentCosts
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
+            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
+            .Include(cost => cost.CostLineItems)
+                .ThenInclude(item => item.VATItems);
 
         if (includeChildren && !track)
         {
