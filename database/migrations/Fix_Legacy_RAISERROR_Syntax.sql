@@ -231,9 +231,49 @@ BEGIN
         '''' + @CRLF + 'ROLLBACK TRAN',
         ''', 1;' + @CRLF + '-- ROLLBACK is automatic with THROW');
 
-    -- If THROW is followed by a newline without the state, append it
-    SET @NewDef = REPLACE(@NewDef, '''' + @CRLF + @DoubleTab, ''', 1;' + @CRLF + @DoubleTab);
-    SET @NewDef = REPLACE(@NewDef, '''' + @CRLF, ''', 1;' + @CRLF);
+    -- If a THROW message ends the line without a state, append it safely per line
+    DECLARE @ProcessedDef NVARCHAR(MAX) = N'';
+    DECLARE @Remaining NVARCHAR(MAX) = @NewDef;
+    DECLARE @Line NVARCHAR(MAX);
+    DECLARE @LineBreakPosition INT;
+    DECLARE @TrailingWhitespace NVARCHAR(MAX);
+    DECLARE @TrimmedLine NVARCHAR(MAX);
+
+    WHILE LEN(@Remaining) > 0
+    BEGIN
+        SET @LineBreakPosition = CHARINDEX(@CRLF, @Remaining);
+
+        IF @LineBreakPosition = 0
+        BEGIN
+            SET @Line = @Remaining;
+            SET @Remaining = N'';
+        END
+        ELSE
+        BEGIN
+            SET @Line = SUBSTRING(@Remaining, 1, @LineBreakPosition - 1);
+            SET @Remaining = SUBSTRING(@Remaining, @LineBreakPosition + LEN(@CRLF), LEN(@Remaining));
+        END
+
+        IF @Line LIKE '%THROW [0-9][0-9][0-9][0-9][0-9], ''%' AND @Line NOT LIKE '%THROW%''%, [0-9]%'
+        BEGIN
+            SET @TrailingWhitespace = RIGHT(@Line, LEN(@Line) - LEN(RTRIM(@Line)));
+            SET @TrimmedLine = RTRIM(@Line);
+
+            IF RIGHT(@TrimmedLine, 1) = ';'
+                SET @TrimmedLine = LEFT(@TrimmedLine, LEN(@TrimmedLine) - 1) + ', 1;';
+            ELSE
+                SET @TrimmedLine = @TrimmedLine + ', 1;';
+
+            SET @Line = @TrimmedLine + @TrailingWhitespace;
+        END
+
+        IF @ProcessedDef = N''
+            SET @ProcessedDef = @Line;
+        ELSE
+            SET @ProcessedDef = @ProcessedDef + @CRLF + @Line;
+    END
+
+    SET @NewDef = @ProcessedDef;
     
     -- Print the ALTER statement
     PRINT '-- ============================================================';
