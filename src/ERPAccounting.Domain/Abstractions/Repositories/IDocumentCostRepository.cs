@@ -19,8 +19,6 @@ public interface IDocumentCostRepository
         bool includeChildren = false,
         CancellationToken cancellationToken = default);
 
-    Task<DocumentCost?> GetDetailedAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default);
-
     Task AddAsync(DocumentCost entity, CancellationToken cancellationToken = default);
 
     void Update(DocumentCost entity);
