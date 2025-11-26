@@ -28,17 +28,16 @@ public class DocumentCostRepository : IDocumentCostRepository
 
     public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
     {
-        IQueryable<DocumentCost> query = _context.DocumentCosts
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
-
         if (track)
         {
-            return await query
+            return await _context.DocumentCosts
                 .AsTracking()
+                .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
-        return await query
+        return await _context.DocumentCosts
+            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
             .Include(cost => cost.CostLineItems)
                 .ThenInclude(item => item.VATItems)
             .AsNoTracking()
