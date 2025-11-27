@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ namespace ERPAccounting.Infrastructure.Data
     /// - Entity-level audit (CreatedAt, UpdatedAt, IsDeleted) is NOT used
     /// - All auditing is done via ApiAuditLog + ApiAuditLogEntityChanges tables
     /// - See ApiAuditMiddleware for automatic API request/response logging
+    /// - SaveChangesAsync automatically tracks entity changes if audit context is set
     /// 
     /// TRIGGER COMPATIBILITY:
     /// - All transactional tables have database triggers for auditing/history
@@ -26,19 +28,188 @@ namespace ERPAccounting.Infrastructure.Data
     public class AppDbContext : DbContext
     {
         private readonly ICurrentUserService _currentUserService;
+        private readonly IAuditLogService? _auditLogService;
+        private int? _currentAuditLogId;
 
         public AppDbContext(
             DbContextOptions<AppDbContext> options,
-            ICurrentUserService currentUserService) : base(options)
+            ICurrentUserService currentUserService,
+            IAuditLogService? auditLogService = null) : base(options)
         {
             _currentUserService = currentUserService;
+            _auditLogService = auditLogService;
         }
 
         // NOTE: Legacy AuditInterceptor has been removed
         // Audit is now handled by:
         // 1. ApiAuditMiddleware - logs all API requests/responses to tblAPIAuditLog
-        // 2. AuditLogService - tracks entity changes to tblAPIAuditLogEntityChanges
+        // 2. This SaveChangesAsync override - tracks entity changes to tblAPIAuditLogEntityChanges
         // This provides complete audit trail without modifying entity schemas
+
+        /// <summary>
+        /// Postavlja trenutni audit log ID za ovaj request.
+        /// Middleware poziva ovo sa IDAuditLog-om da bi SaveChanges mogao da povezuje izmene.
+        /// </summary>
+        public void SetCurrentAuditLogId(int auditLogId)
+        {
+            _currentAuditLogId = auditLogId;
+        }
+
+        /// <summary>
+        /// Override SaveChangesAsync sa automatskim entity tracking-om.
+        /// Ako je _currentAuditLogId setuvan, sve izmene na entitetima će biti logovane u tblAPIAuditLogEntityChanges.
+        /// </summary>
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            // Ako imamo audit log ID, prikupi promene PRE save-a
+            Dictionary<string, (string EntityType, string EntityId, string Operation, Dictionary<string, (object Old, object New)> Changes)>? entityChanges = null;
+            
+            if (_currentAuditLogId.HasValue && _auditLogService != null)
+            {
+                entityChanges = CaptureEntityChanges();
+            }
+
+            // Izvrši glavni save
+            var result = await base.SaveChangesAsync(cancellationToken);
+
+            // Loguj promene POSLE save-a (da bi imali ID-eve novih entiteta)
+            if (entityChanges != null && entityChanges.Any())
+            {
+                await LogCapturedChangesAsync(entityChanges);
+            }
+
+            // Reset audit log ID
+            _currentAuditLogId = null;
+
+            return result;
+        }
+
+        /// <summary>
+        /// Prikuplja sve promene na entitetima iz ChangeTracker-a.
+        /// </summary>
+        private Dictionary<string, (string EntityType, string EntityId, string Operation, Dictionary<string, (object Old, object New)> Changes)> CaptureEntityChanges()
+        {
+            var capturedChanges = new Dictionary<string, (string, string, string, Dictionary<string, (object, object)>)>();
+
+            var entries = ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added || 
+                           e.State == EntityState.Modified || 
+                           e.State == EntityState.Deleted)
+                .ToList();
+
+            foreach (var entry in entries)
+            {
+                // Preskočemo same audit tabele (ne auditujemo audit)
+                if (entry.Entity is ApiAuditLog or ApiAuditLogEntityChange)
+                    continue;
+
+                var entityType = entry.Entity.GetType().Name;
+                var primaryKey = GetPrimaryKeyValue(entry);
+                var operation = entry.State.ToString();
+                var changes = new Dictionary<string, (object Old, object New)>();
+
+                if (entry.State == EntityState.Added)
+                {
+                    // Za Added - samo nove vrednosti
+                    foreach (var property in entry.Properties)
+                    {
+                        if (ShouldAuditProperty(property))
+                        {
+                            changes[property.Metadata.Name] = (null, property.CurrentValue);
+                        }
+                    }
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    // Za Modified - samo promenjena polja
+                    foreach (var property in entry.Properties)
+                    {
+                        if (ShouldAuditProperty(property) && property.IsModified)
+                        {
+                            changes[property.Metadata.Name] = (
+                                property.OriginalValue,
+                                property.CurrentValue
+                            );
+                        }
+                    }
+                }
+                else if (entry.State == EntityState.Deleted)
+                {
+                    // Za Deleted - stare vrednosti
+                    foreach (var property in entry.Properties)
+                    {
+                        if (ShouldAuditProperty(property))
+                        {
+                            changes[property.Metadata.Name] = (property.OriginalValue, null);
+                          }
+                    }
+                }
+
+                if (changes.Any())
+                {
+                    var key = $"{entityType}:{primaryKey}";
+                    capturedChanges[key] = (entityType, primaryKey, operation, changes);
+                }
+            }
+
+            return capturedChanges;
+        }
+
+        /// <summary>
+        /// Loguje prikupljene promene u audit log.
+        /// </summary>
+        private async Task LogCapturedChangesAsync(
+            Dictionary<string, (string EntityType, string EntityId, string Operation, Dictionary<string, (object Old, object New)> Changes)> entityChanges)
+        {
+            if (_auditLogService == null || !_currentAuditLogId.HasValue)
+                return;
+
+            foreach (var change in entityChanges.Values)
+            {
+                try
+                {
+                    await _auditLogService.LogEntityChangeAsync(
+                        _currentAuditLogId.Value,
+                        change.EntityType,
+                        change.EntityId,
+                        change.Operation,
+                        change.Changes
+                    );
+                }
+                catch
+                {
+                    // Ignore audit failures - ne smeju da prekinu main transaction
+                    // Greška je već logovana u AuditLogService
+                }
+            }
+        }
+
+        /// <summary>
+        /// Da li treba auditovati ovu property.
+        /// </summary>
+        private bool ShouldAuditProperty(Microsoft.EntityFrameworkCore.ChangeTracking.PropertyEntry property)
+        {
+            var propertyName = property.Metadata.Name;
+
+            // Ne audituj RowVersion/TimeStamp kolone (binarne vrednosti)
+            if (propertyName.EndsWith("TimeStamp") || propertyName.Contains("RowVersion"))
+                return false;
+
+            // Ne audituj internal EF tracking properties
+            if (propertyName.StartsWith("__"))
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Izvlači vrednost primarnog ključa iz entity-ja.
+        /// </summary>
+        private string GetPrimaryKeyValue(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+        {
+            var keyProperty = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey());
+            return keyProperty?.CurrentValue?.ToString() ?? "UNKNOWN";
+        }
 
         // ═══════════════════════════════════════════════════════════════
         // MAIN TABLES

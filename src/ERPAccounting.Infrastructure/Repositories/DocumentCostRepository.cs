@@ -26,20 +26,16 @@ public class DocumentCostRepository : IDocumentCostRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
+    public async Task<DocumentCost?> GetAsync(
+        int documentId,
+        int costId,
+        bool track = false,
+        bool includeChildren = false,
+        CancellationToken cancellationToken = default)
     {
-        if (track)
-        {
-            return await _context.DocumentCosts
-                .AsTracking()
-                .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
+        IQueryable<DocumentCost> query = _context.DocumentCosts
+            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
 
-        IQueryable<DocumentCost> query = _context.DocumentCosts;
-
-        // Avoid loading child collections on tracked queries to prevent marking the full graph as modified
-        // when only the header needs updating.
         if (includeChildren && !track)
         {
             query = query
@@ -48,35 +44,10 @@ public class DocumentCostRepository : IDocumentCostRepository
                 .AsNoTracking();
         }
 
+        query = track ? query.AsTracking() : query.AsNoTracking();
+
         return await query
-            .AsNoTracking()
             .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<DocumentCost?> GetDetailedAsync(
-        int documentId,
-        int costId,
-        bool track = false,
-        CancellationToken cancellationToken = default)
-    {
-        var query = _context.DocumentCosts
-            .Include(cost => cost.CostLineItems)
-                .ThenInclude(item => item.VATItems)
-            .AsSplitQuery()
-            .AsQueryable();
-
-        if (track)
-        {
-            return await query
-                .AsTracking()
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-
-        return await query
-            .Include(cost => cost.CostLineItems)
-                .ThenInclude(item => item.VATItems)
-            .AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
     }
 
