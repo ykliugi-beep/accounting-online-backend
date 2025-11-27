@@ -26,6 +26,9 @@ public class DocumentCostRepository : IDocumentCostRepository
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// KRITIČNA ISPRAVKA: Pravilna primena track parametra.
+    /// </summary>
     public async Task<DocumentCost?> GetAsync(
         int documentId,
         int costId,
@@ -36,19 +39,18 @@ public class DocumentCostRepository : IDocumentCostRepository
         IQueryable<DocumentCost> query = _context.DocumentCosts
             .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
 
-        if (includeChildren && !track)
+        // ✅ FIX: Include children nezavisno od track parametra
+        if (includeChildren)
         {
             query = query
                 .Include(cost => cost.CostLineItems)
-                    .ThenInclude(item => item.VATItems)
-                .AsNoTracking();
+                    .ThenInclude(item => item.VATItems);
         }
 
-        query = track ? query.AsTracking() : query.AsNoTracking();
+        // ✅ FIX: Primeni tracking JEDNOM na osnovu track parametra
+        query = track ? query : query.AsNoTracking();
 
-        return await query
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await query.FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task AddAsync(DocumentCost entity, CancellationToken cancellationToken = default)
