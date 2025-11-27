@@ -12,12 +12,13 @@ namespace ERPAccounting.Infrastructure.Middleware
 {
     /// <summary>
     /// Middleware za automatsko logovanje svih API poziva sa JSON snapshot podrškom.
-    /// Hvataj request/response i čuva u tblAPIAuditLog tabelu.
+    /// Hvata request/response i čuva u tblAPIAuditLog tabelu.
     /// 
     /// NOVI PRISTUP SA HttpContext.Items:
     /// - Koristi HttpContext.Items za deljenje audit log ID-a
     /// - Svi DbContext instance-i mogu da pročitaju audit log ID iz HttpContext-a
     /// - Rešava problem različitih DI scope-ova
+    /// - Hvata RequestBody i ResponseBody za SVE HTTP metode
     /// </summary>
     public class ApiAuditMiddleware
     {
@@ -56,10 +57,10 @@ namespace ERPAccounting.Infrastructure.Middleware
                 CorrelationId = Guid.NewGuid()
             };
 
-            // 2. Pročitaj request body (ako je moguće)
-            if (request.Method == "POST" || request.Method == "PUT" || request.Method == "PATCH")
+            // 2. ISPRAVKA: Pročitaj request body za SVE metode koje imaju content
+            if (request.ContentLength > 0 && request.Body.CanRead)
             {
-                if (request.ContentLength > 0)
+                try
                 {
                     request.EnableBuffering();
 
@@ -77,6 +78,10 @@ namespace ERPAccounting.Infrastructure.Middleware
                     {
                         request.Body.Seek(0, SeekOrigin.Begin);
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to read request body");
                 }
             }
 
@@ -116,17 +121,13 @@ namespace ERPAccounting.Infrastructure.Middleware
                 auditLog.IsSuccess = context.Response.StatusCode >= 200 && context.Response.StatusCode < 400;
                 auditLog.ResponseTimeMs = (int)stopwatch.ElapsedMilliseconds;
 
-                // 8. ISPRAVKA: Hvata response body ZA SVE statuse (ne samo errore)
+                // 8. ISPRAVKA: Hvata response body ZA SVE metode
                 if (responseBodyStream.CanSeek && responseBodyStream.Length > 0)
                 {
                     responseBodyStream.Seek(0, SeekOrigin.Begin);
                     using (var reader = new StreamReader(responseBodyStream, Encoding.UTF8, leaveOpen: true))
                     {
-                        // Loguj response body ZA SVE operacije koje menjaju stanje (POST, PUT, DELETE)
-                        if (request.Method == "POST" || request.Method == "PUT" || request.Method == "DELETE")
-                        {
-                            auditLog.ResponseBody = await reader.ReadToEndAsync();
-                        }
+                        auditLog.ResponseBody = await reader.ReadToEndAsync();
                     }
                     responseBodyStream.Seek(0, SeekOrigin.Begin);
                 }
@@ -152,6 +153,17 @@ namespace ERPAccounting.Infrastructure.Middleware
                 auditLog.ErrorMessage = ex.Message;
                 auditLog.ExceptionDetails = ex.ToString();
                 auditLog.ResponseTimeMs = (int)stopwatch.ElapsedMilliseconds;
+
+                // Pokuša da pročita response body i za error
+                if (responseBodyStream.CanSeek && responseBodyStream.Length > 0)
+                {
+                    responseBodyStream.Seek(0, SeekOrigin.Begin);
+                    using (var reader = new StreamReader(responseBodyStream, Encoding.UTF8, leaveOpen: true))
+                    {
+                        auditLog.ResponseBody = await reader.ReadToEndAsync();
+                    }
+                    responseBodyStream.Seek(0, SeekOrigin.Begin);
+                }
 
                 try
                 {
