@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using ERPAccounting.Common.Interfaces;
 using ERPAccounting.Domain.Entities;
@@ -28,7 +29,7 @@ namespace ERPAccounting.Infrastructure.Services
         }
 
         /// <summary>
-        /// Asinkrono loguje API poziv u bazu.
+        /// Asinkrono loguje API poziv u bazu (initial request logging).
         /// Ne baca exception ako logovanje faila - samo loguje error.
         /// </summary>
         public async Task LogAsync(ApiAuditLog auditLog)
@@ -41,11 +42,9 @@ namespace ERPAccounting.Infrastructure.Services
                 await context.SaveChangesAsync(default);
 
                 _logger.LogDebug(
-                    "API call logged: {Method} {Endpoint} - {StatusCode} ({ResponseTime}ms)",
+                    "API call logged: {Method} {Endpoint} - Started",
                     auditLog.HttpMethod,
-                    auditLog.Endpoint,
-                    auditLog.ResponseStatusCode,
-                    auditLog.ResponseTimeMs);
+                    auditLog.Endpoint);
             }
             catch (Exception ex)
             {
@@ -54,8 +53,52 @@ namespace ERPAccounting.Infrastructure.Services
                     "Failed to log API audit entry for {Method} {Endpoint}",
                     auditLog.HttpMethod,
                     auditLog.Endpoint);
-                // Opciono: Fallback na file logging ili alternative storage
-                // LogToFile(auditLog);
+            }
+        }
+
+        /// <summary>
+        /// Ažurira postojeći audit log sa response podacima.
+        /// </summary>
+        public async Task UpdateAsync(ApiAuditLog auditLog)
+        {
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
+                // Nađi postojeći audit log
+                var existing = await context.ApiAuditLogs
+                    .FirstOrDefaultAsync(a => a.IDAuditLog == auditLog.IDAuditLog);
+
+                if (existing == null)
+                {
+                    _logger.LogWarning(
+                        "Audit log {AuditLogId} not found for update",
+                        auditLog.IDAuditLog);
+                    return;
+                }
+
+                // Ažuriraj response podatke
+                existing.ResponseStatusCode = auditLog.ResponseStatusCode;
+                existing.ResponseBody = auditLog.ResponseBody;
+                existing.ResponseTimeMs = auditLog.ResponseTimeMs;
+                existing.IsSuccess = auditLog.IsSuccess;
+                existing.ErrorMessage = auditLog.ErrorMessage;
+                existing.ExceptionDetails = auditLog.ExceptionDetails;
+
+                await context.SaveChangesAsync(default);
+
+                _logger.LogDebug(
+                    "API call updated: {Method} {Endpoint} - {StatusCode} ({ResponseTime}ms)",
+                    auditLog.HttpMethod,
+                    auditLog.Endpoint,
+                    auditLog.ResponseStatusCode,
+                    auditLog.ResponseTimeMs);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to update API audit entry {AuditLogId}",
+                    auditLog.IDAuditLog);
             }
         }
 
@@ -120,10 +163,24 @@ namespace ERPAccounting.Infrastructure.Services
         public static string? SerializeValue(object? value)
         {
             if (value is null)
-                return null; // or return "null" depending on how you store audit values
+                return null;
 
-            // Example serialization:
-            return JsonSerializer.Serialize(value);
+            // Za jednostavne tipove - direktna konverzija
+            if (value is string str)
+                return str;
+
+            if (value.GetType().IsPrimitive || value is DateTime || value is decimal)
+                return value.ToString();
+
+            // Za complex tipove - JSON serijalizacija
+            try
+            {
+                return JsonSerializer.Serialize(value);
+            }
+            catch
+            {
+                return value.ToString();
+            }
         }
     }
 }
