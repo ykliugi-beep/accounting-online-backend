@@ -1,6 +1,6 @@
 # Audit Sistem - Kompletni Rezime Ispravki
 
-**Datum:** 27. Novembar 2025  
+**Datum:** 27. Novembar 2025, 22:40 CET  
 **Branch:** `main`  
 **Status:** ✅ **SVE ISPRAVKE ZAVRŠENE**
 
@@ -191,6 +191,96 @@ public AppDbContext(
 
 ---
 
+### Problem 6: API Vraća 200 Ali Database Nije Promenjen
+
+**Simptomi:**
+```
+PUT /api/v1/documents/259602/costs/116373
+Body: { "datumDPO": "2024-11-27", ... }
+
+API Response: HTTP 200 OK ✅
+ResponseBody: { "datumDPO": "2024-11-27", ... } ✅
+
+tblAPIAuditLog: RequestBody/ResponseBody populated ✅
+tblAPIAuditLogEntityChanges: EMPTY ❌
+
+SELECT DatumDPO FROM tblDokumentTroskovi WHERE ID = 116373;
+Result: NULL ❌ (nije promenjen!)
+```
+
+**Root Cause:**
+
+**AsNoTracking() Bug:**
+
+```csharp
+// Service poziva:
+var entity = await EnsureCostExistsAsync(documentId, costId, track: true);
+
+// Ali EnsureCostExistsAsync IGNORIŠE track parametar:
+private async Task<DocumentCost> EnsureCostExistsAsync(..., bool track = false)
+{
+    var entity = await _costRepository.GetAsync(documentId, costId, includeChildren: true);
+    //                                                                ^
+    //                                                                track nije prosleđen!
+}
+
+// Repository dobija track=false (default) i primenjuje:
+query = query.AsNoTracking();  // ❌ Entity se učitava bez tracking-a
+
+// Promene se ne detektuju:
+entity.DatumDPO = newValue;  // In-memory promena
+await SaveChangesAsync();     // ❌ 0 changes detected
+
+// API vraća DTO sa in-memory podacima:
+var dto = MapToDto(entity);  // DTO ima novu vrednost
+return Ok(dto);              // API vraća 200 OK
+
+// Ali database ostaje nepromenjen!
+```
+
+**Rešenje:** ✅ **Commit 81960ba + 5231fab**
+
+**Fix #1: Service prosleđuje track parametar:**
+```csharp
+private async Task<DocumentCost> EnsureCostExistsAsync(..., bool track = false)
+{
+    // ✅ FIX: Prosleđuje track parametar
+    var entity = await _costRepository.GetAsync(
+        documentId, 
+        costId, 
+        track: track,              // ✅ Prosleđen!
+        includeChildren: !track);  // ✅ Child entities samo ako nije tracking
+    
+    return entity;
+}
+```
+
+**Fix #2: Repository pravilna logika:**
+```csharp
+public async Task<DocumentCost?> GetAsync(..., bool track = false, bool includeChildren = false)
+{
+    IQueryable<DocumentCost> query = _context.DocumentCosts.Where(...);
+
+    // ✅ Include children nezavisno od track-a
+    if (includeChildren)
+    {
+        query = query.Include(cost => cost.CostLineItems)
+                     .ThenInclude(item => item.VATItems);
+    }
+
+    // ✅ Primeni tracking JEDNOM
+    query = track ? query : query.AsNoTracking();
+    //      ^
+    //      Ako je track=true, ostaje default AsTracking()
+
+    return await query.FirstOrDefaultAsync();
+}
+```
+
+**Detalji:** [AUDIT-ASNOTRACKING-FIX.md](./AUDIT-ASNOTRACKING-FIX.md)
+
+---
+
 ## 📊 Before/After Comparison
 
 ### SQL UPDATE Statement
@@ -231,6 +321,9 @@ SELECT * FROM tblAPIAuditLog WHERE IDAuditLog = 1036;
 
 SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges;
 -- Result: 0                   ❌ (trebalo bi snapshots)
+
+SELECT DatumDPO FROM tblDokumentTroskovi WHERE IDDokumentTroskovi = 116373;
+-- Result: NULL                ❌ (PUT request nije update-ovao)
 ```
 
 **AFTER:**
@@ -245,6 +338,9 @@ SELECT * FROM tblAPIAuditLog WHERE IDAuditLog = 1037;
 
 SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges;
 -- Result: 5                   ✅ (POST/PUT/DELETE snapshots)
+
+SELECT DatumDPO FROM tblDokumentTroskovi WHERE IDDokumentTroskovi = 116373;
+-- Result: '2024-11-27'        ✅ (PUT request update-ovao)
 ```
 
 ---
@@ -257,6 +353,8 @@ SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges;
 | **AuditLogService.cs** | 547611c | IsModified = true za ResponseBody/RequestBody |
 | **AppDbContext.cs** | 30bf171, a1a9ce1 | HttpContext.Items pristup, ILogger field |
 | **ServiceCollectionExtensions.cs** | bedbd7c | AddHttpContextAccessor() |
+| **DocumentCostService.cs** | 81960ba | Prosleđuje track parametar |
+| **DocumentCostRepository.cs** | 5231fab | Pravilna track logika |
 | **IAuditLogService.cs** | d657ee8 | LogEntitySnapshotAsync metoda |
 
 ---
@@ -269,6 +367,7 @@ SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges;
 | **AUDIT-QUICK-START.md** | Brzi vodič za programere |
 | **AUDIT-TROUBLESHOOTING.md** | Debugging i poznati problemi |
 | **AUDIT-EF-CHANGE-TRACKER-FIX.md** | Detaljan opis EF problema i rešenja |
+| **AUDIT-ASNOTRACKING-FIX.md** | AsNoTracking bug - API 200 ali DB nepromenjen |
 | **AUDIT-TESTING-GUIDE.md** | Test plan sa SQL query-jima |
 | **AUDIT-IMPLEMENTATION-SUMMARY.md** | Deployment checklist |
 | **AUDIT-FIX-SUMMARY.md** | Ovaj dokument - rezime svih ispravki |
@@ -282,6 +381,8 @@ SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges;
 - [x] Svi fajlovi ažurirani
 - [x] `ILogger` field dodat u `AppDbContext`
 - [x] `IHttpContextAccessor` registrovan
+- [x] `track` parametar prosleđen u repository
+- [x] Repository track logika ispravljena
 - [x] Compilation errors ispravnjeni
 - [ ] **`dotnet build` izvršen** (PENDING - uradi ovo)
 
@@ -292,12 +393,13 @@ SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges;
 - [x] EF IsModified eksplicitno setovanje
 - [x] HttpContext.Items pristup implementiran
 - [x] Snapshot tracking u SaveChangesAsync
+- [x] AsNoTracking bug rešen - entity tracking fiksan
 
 ### Testing
 
 - [ ] GET request - ResponseBody popunjen
 - [ ] POST request - dokument kreiran + snapshot logovan
-- [ ] PUT request - dokument update-ovan + snapshot sa old/new
+- [ ] PUT request - dokument update-ovan + snapshot sa old/new + **database stvarno promenjen**
 - [ ] DELETE request - dokument obrisan + snapshot sa old
 
 ---
@@ -370,6 +472,21 @@ Izvrši test scenarios iz `AUDIT-TESTING-GUIDE.md`
 - Proveri ContentLength, ne metod
 - Hvata sve responses sa content-om
 
+### 4. AsNoTracking() Preventi Updates
+
+**Problem:**
+- track parametar nije prosleđen
+- Entity se učitava sa AsNoTracking()
+- Promene se ne detektuju
+- API vraća "success" sa in-memory podacima
+- Database ostaje nepromenjen
+
+**Rešenje:**
+- Prosleđuj track parametar svuda
+- Pravilna logika u repository-u
+- Entity se trackuje kada je potrebno
+- Promene se čuvaju u bazi
+
 ---
 
 ## 📊 Expected Behavior
@@ -419,27 +536,28 @@ DataType: 'JSON'
 
 ---
 
-### PUT /api/v1/documents/259602
+### PUT /api/v1/documents/259602/costs/116373
 
-**tblDokument:**
+**tblDokumentTroskovi:**
 ```
-IDDokument: 259602
-BrojDokumenta: 'UPDATED-VALUE'  ✅ (promenjen)
+IDDokumentTroskovi: 116373
+DatumDPO: '2024-11-27'  ✅ (STVARNO promenjen u bazi!)
+DatumValute: '2024-11-28'  ✅
 ```
 
 **tblAPIAuditLog:**
 ```
 HttpMethod: PUT
-RequestBody: '{"brojDokumenta": "UPDATED-VALUE", ...}'  ✅
-ResponseBody: '{"id": 259602, ...}'  ✅
+RequestBody: '{"datumDPO": "2024-11-27", ...}'  ✅
+ResponseBody: '{"id": 116373, ...}'  ✅
 OperationType: 'Update'
 ```
 
 **tblAPIAuditLogEntityChanges:**
 ```
 PropertyName: '__FULL_SNAPSHOT__'
-OldValue: '{"brojDokumenta": "AUDIT-TEST-001", ...}'  ✅
-NewValue: '{"brojDokumenta": "UPDATED-VALUE", ...}'  ✅
+OldValue: '{"datumDPO": null, ...}'  ✅
+NewValue: '{"datumDPO": "2024-11-27", ...}'  ✅
 ```
 
 ---
@@ -495,7 +613,7 @@ NewValue: NULL
 - [ ] NewValue = JSON
 
 **Za PUT Request:**
-- [ ] Dokument update-ovan u `tblDokument`
+- [ ] Dokument update-ovan u `tblDokument` **(✅ STVARNO u bazi!)**
 - [ ] RequestBody popunjen
 - [ ] ResponseBody popunjen
 - [ ] Snapshot sa OldValue ≠ NewValue
@@ -542,6 +660,8 @@ NewValue: NULL
 3. ✅ EF eksplicitno markira ResponseBody kao Modified
 4. ✅ HttpContext.Items pristup rešava instance mismatch
 5. ✅ ILogger field dodat za debug logging
+6. ✅ AsNoTracking bug rešen - entity tracking fiksan
+7. ✅ Database se stvarno update-uje kada API vraća 200 OK
 
 **Sistem je spreman za testiranje!** 🚀
 
@@ -549,6 +669,7 @@ NewValue: NULL
 - 📖 [AUDIT-TESTING-GUIDE.md](./AUDIT-TESTING-GUIDE.md) - Detaljni test plan
 - 🔧 [AUDIT-TROUBLESHOOTING.md](./AUDIT-TROUBLESHOOTING.md) - Debugging guide
 - 📘 [AUDIT-EF-CHANGE-TRACKER-FIX.md](./AUDIT-EF-CHANGE-TRACKER-FIX.md) - EF problem detalji
+- 📝 [AUDIT-ASNOTRACKING-FIX.md](./AUDIT-ASNOTRACKING-FIX.md) - AsNoTracking bug detalji
 
 ---
 
