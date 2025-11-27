@@ -24,7 +24,7 @@ namespace ERPAccounting.Infrastructure.Middleware
             HttpContext context,
             IAuditLogService auditLogService,
             ICurrentUserService currentUserService,
-            AppDbContext dbContext)  // NOVO: Dodato za setovanje audit log ID-a
+            AppDbContext dbContext)
         {
             // Kreiraj audit log objekat
             var auditLog = new ApiAuditLog
@@ -41,7 +41,7 @@ namespace ERPAccounting.Infrastructure.Middleware
                 CorrelationId = Guid.NewGuid()
             };
 
-            // Capture request body za POST/PUT operacije
+            // Capture request body za POST/PUT/PATCH operacije
             if (context.Request.Method == "POST" || context.Request.Method == "PUT" || context.Request.Method == "PATCH")
             {
                 context.Request.EnableBuffering();
@@ -58,7 +58,7 @@ namespace ERPAccounting.Infrastructure.Middleware
             // Measure response time
             var stopwatch = Stopwatch.StartNew();
 
-            // Capture response body using a non-disposable wrapper so downstream code cannot close it
+            // Capture response body using a non-disposable wrapper
             var originalBodyStream = context.Response.Body;
             await using var responseBody = new MemoryStream();
             await using var safeResponseBody = new NonDisposableStream(responseBody);
@@ -70,7 +70,7 @@ namespace ERPAccounting.Infrastructure.Middleware
                 // da bi imali IDAuditLog za entity tracking
                 await auditLogService.LogAsync(auditLog);
 
-                // Setuj audit log ID na DbContext - takođe entity changes mogu da se veu za ovaj request
+                // Setuj audit log ID na DbContext - entity changes će se vezati za ovaj request
                 dbContext.SetCurrentAuditLogId(auditLog.IDAuditLog);
 
                 // Pozovi sledeći middleware u pipeline
@@ -82,22 +82,21 @@ namespace ERPAccounting.Infrastructure.Middleware
                 auditLog.ResponseStatusCode = context.Response.StatusCode;
                 auditLog.IsSuccess = context.Response.StatusCode < 400;
 
-                // Capture response body (opciono - može biti veliko)
-                // Za production, možda ne želiš da loguješ response body
-                if (TrySeekToBeginning(responseBody) && auditLog.IsSuccess == false)
-                {
-                    auditLog.ResponseBody = await ReadResponseBodyAsync(responseBody);
-                }
-
-                // Copy response back to original stream
+                // Capture response body (samo za greške da ne loadujemo preveliko)
                 if (TrySeekToBeginning(responseBody))
                 {
+                    if (!auditLog.IsSuccess)
+                    {
+                        auditLog.ResponseBody = await ReadResponseBodyAsync(responseBody);
+                    }
+
+                    // Copy response back to original stream
+                    await TrySeekToBeginning(responseBody);
                     await CopyResponseAsync(responseBody, originalBodyStream);
                 }
 
                 // Ažuriraj audit log sa response podacima
-                // Koristimo novi DbContext da ne interferiramo sa main request
-                await auditLogService.LogAsync(auditLog);
+                await auditLogService.UpdateAsync(auditLog);
             }
             catch (Exception ex)
             {
@@ -113,7 +112,7 @@ namespace ERPAccounting.Infrastructure.Middleware
                 // Ažuriraj audit log sa exception podacima
                 try
                 {
-                    await auditLogService.LogAsync(auditLog);
+                    await auditLogService.UpdateAsync(auditLog);
                 }
                 catch
                 {
@@ -125,7 +124,7 @@ namespace ERPAccounting.Infrastructure.Middleware
             }
             finally
             {
-                // Vrati originalni stream kako bi naredni middleware mogao da piše u response
+                // Vrati originalni stream
                 context.Response.Body = originalBodyStream;
             }
         }
@@ -142,7 +141,7 @@ namespace ERPAccounting.Infrastructure.Middleware
             }
             catch (ObjectDisposedException)
             {
-                // Stream je zatvoren od strane downstream middleware-a
+                // Stream je zatvoren
             }
 
             return false;
@@ -162,7 +161,6 @@ namespace ERPAccounting.Infrastructure.Middleware
             }
             catch (ObjectDisposedException)
             {
-                // Stream je zatvoren, preskoči čitanje
                 return null;
             }
         }
@@ -204,12 +202,11 @@ namespace ERPAccounting.Infrastructure.Middleware
 
             protected override void Dispose(bool disposing)
             {
-                // Do not dispose the inner stream to avoid breaking middleware that expects it to stay open
+                // Do not dispose the inner stream
             }
 
             public override async ValueTask DisposeAsync()
             {
-                // Mirror Dispose behavior but keep inner stream open
                 await Task.CompletedTask;
             }
         }
