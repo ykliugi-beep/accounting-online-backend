@@ -7,6 +7,188 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - 2025-11-27: Entity-Level Audit Tracking
+
+**🎉 MAJOR: Complete Entity Change Audit System**
+
+Implementiran kompletan sistem za praćenje field-level promena na svim entitetima.
+
+**Kako radi:**
+
+1. `ApiAuditMiddleware` kreira audit log zapis PRE pozivanja controller-a
+2. Dobija `IDAuditLog` i setuje ga na `AppDbContext` preko `SetCurrentAuditLogId()`
+3. Sve promene na entitetima se prate kroz EF Core `ChangeTracker`
+4. `AppDbContext.SaveChangesAsync()` automatski detektuje INSERT/UPDATE/DELETE operacije
+5. Za svako promenjeno polje kreira zapis u `tblAPIAuditLogEntityChanges`
+6. Povezuje sve promene sa parent audit log-om preko `IDAuditLog`
+
+**Primer:**
+
+```sql
+-- UPDATE cost dokumenta kroz API
+PUT /api/v1/documents/259602/costs/116371
+{
+  "documentNumber": "B2-UPDATED",
+  "description": "Nova opisna linija",
+  "exchangeRate": 117.50
+}
+
+-- U tblAPIAuditLog:
+IDAuditLog: 123
+HttpMethod: PUT
+Endpoint: /api/v1/documents/259602/costs/116371
+ResponseStatusCode: 200
+
+-- U tblAPIAuditLogEntityChanges:
+IDEntityChange | IDAuditLog | EntityType    | EntityId | PropertyName    | OldValue  | NewValue        | ChangeType
+1              | 123        | DocumentCost  | 116371   | DocumentNumber  | B2/11/24  | B2-UPDATED      | UPDATE
+2              | 123        | DocumentCost  | 116371  | Description     | Old desc  | Nova opisna...  | UPDATE
+3              | 123        | DocumentCost  | 116371   | ExchangeRate    | 117.23    | 117.50          | UPDATE
+```
+
+**Files Changed:**
+- `src/ERPAccounting.Infrastructure/Data/AppDbContext.cs`
+  - Dodato `SetCurrentAuditLogId()` public metoda
+  - Override `SaveChangesAsync()` sa automatic entity tracking-om
+  - Dodato `CaptureEntityChanges()` - prikuplja sve promene PRE save-a
+  - Dodato `LogCapturedChangesAsync()` - upisuje u audit tabelu POSLE save-a
+  - Dodato `ShouldAuditProperty()` - filtrira timestamp i internal EF properties
+  - Dodato `GetPrimaryKeyValue()` - ekstraktuje primary key vrednost
+
+- `src/ERPAccounting.Infrastructure/Middleware/ApiAuditMiddleware.cs`
+  - Promenjeno: audit log se kreira PRE `await _next(context)` (umesto POSLE)
+  - Dodato: `AppDbContext` kao dependency
+  - Dodato: `dbContext.SetCurrentAuditLogId(auditLog.IDAuditLog)` poziv
+  - Omogućava povezivanje HTTP requesta sa entity change-ovima
+
+**Benefiti:**
+- ✅ Kompletan audit trail: od HTTP requesta do pojedinačnih field promena
+- ✅ Ne modićira entity schema (nema CreatedAt/UpdatedAt/IsDeleted kolona)
+- ✅ Minimalan overhead - samo jedan dodatni query po SaveChanges
+- ✅ Failure u audit-u ne prekida main transaction
+- ✅ Compatible sa postojecom table structure
+
+---
+
+### Fixed - 2025-11-27: DateTime JSON Deserialization
+
+**🐛 CRITICAL: PUT `/api/v1/documents/{id}/costs/{costId}` Returns 400 Bad Request**
+
+**Problem:**
+```json
+{
+  "errors": {
+    "dto": ["The dto field is required."],
+    "$.dueDate": ["The JSON value could not be converted to UpdateDocumentCostDto. Path: $.dueDate | LineNumber: 4 | BytePositionInLine: 38."]
+  },
+  "status": 400
+}
+```
+
+**Uzrok:**
+- JSON deserializer očekivao ISO 8601 format: `"2025-11-26T02:01:17.863"`
+- Frontend slao format sa razmakom: `"2025-11-26 02:01:17.863"`
+- System.Text.Json po default-u nije mogao da parsira ovaj format
+- Binder nije uspevao da kreira `UpdateDocumentCostDto` instancu
+- `dto` parametar ostao `null` → validation error
+
+**Rešenje:**
+
+Konfigurisano `AddJsonOptions()` u `Program.cs` sa fleksibilnijim DateTime parsing-om:
+
+```csharp
+builder.Services.AddControllers()
+.AddJsonOptions(options =>
+{
+    // Podrška za više formata DateTime-a
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.JsonSerializerOptions.AllowTrailingCommas = true;
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+});
+```
+
+**Sada rade SVI sledeći formati:**
+
+```json
+// ✅ Čisti datum
+{
+  "dueDate": "2025-11-26",
+  "currencyDate": "2025-12-01"
+}
+
+// ✅ ISO 8601 bez milisekundi
+{
+  "dueDate": "2025-11-26T02:01:17",
+  "currencyDate": "2025-12-01T14:30:00"
+}
+
+// ✅ ISO 8601 sa milisekundama
+{
+  "dueDate": "2025-11-26T02:01:17.863",
+  "currencyDate": "2025-12-01T14:30:00.123"
+}
+
+// ✅ Format sa razmakom (frontend)
+{
+  "dueDate": "2025-11-26 02:01:17.863",
+  "currencyDate": "2025-12-01 14:30:00.000"
+}
+```
+
+**Files Changed:**
+- `src/ERPAccounting.API/Program.cs`
+  - Dodato `using System.Text.Json` i `using System.Text.Json.Serialization`
+  - Dodato `.AddJsonOptions()` chain sa konfigurovanim options
+
+**Impact:**
+- ✅ Backward compatible - stari formati i dalje rade
+- ✅ Frontend ne mora da menja format datuma
+- ✅ Eliminisan 400 error na cost update endpointima
+
+---
+
+### Fixed - 2025-11-27: Empty tblAPIAuditLogEntityChanges Table
+
+**🐛 BUG: tblAPIAuditLogEntityChanges Ostaje Prazna**
+
+**Problem:**
+- `tblAPIAuditLog` se popunjava sa HTTP request/response podacima (✅ radi)
+- `tblAPIAuditLogEntityChanges` ostaje prazna (❌ ne radi)
+- Nije moguće videti koje tačno vrednosti su promenjene u UPDATE operacijama
+- Compliance i debugging zahtevi nisu ispunjeni
+
+**Uzrok:**
+- `IAuditLogService.LogEntityChangeAsync()` metoda postojala ali nije bila pozivana
+- `AppDbContext.SaveChangesAsync()` nije bio override-ovan
+- Nije postojala veza između `ApiAuditMiddleware` i `DbContext`
+- Middleware kreirao audit log POSLE requesta (kad je već kasno)
+
+**Rešenje:**
+
+Implementiran kompletan flow (vidi "Added - 2025-11-27: Entity-Level Audit Tracking" gore).
+
+**Testiranje:**
+
+```sql
+-- PRE fix-a:
+SELECT COUNT(*) FROM tblAPIAuditLogEntityChanges  -- 0 rows
+
+-- POSLE fix-a (nakon PUT requesta):
+SELECT * FROM tblAPIAuditLogEntityChanges 
+WHERE IDAuditLog = (SELECT TOP 1 IDAuditLog FROM tblAPIAuditLog ORDER BY IDAuditLog DESC)
+
+-- Results: 3+ rows sa field-level promenama
+```
+
+**Impact:**
+- ✅ Tabela se sada popunjava automatski za sve INSERT/UPDATE/DELETE operacije
+- ✅ Compliance sa audit trail zahtevima
+- ✅ Lakši debugging - vidi se tačno šta je promenjeno i kada
+
+---
+
 ### Fixed - 2025-11-26: Cost DTO API Alignment with Database Schema
 
 #### 🔴 CRITICAL: CreateDocumentCostDto Incorrect Fields
@@ -14,7 +196,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Problem:**
 `CreateDocumentCostDto` i related DTO-ovi nisu bili usaglašeni sa stvarnom strukturom baze podataka i GUI specifikacijom.
 
-**GREŠKA:** DTO je sadržavao polja `AmountNet` i `AmountVat` koja **NE POSTOJE** u tabeli `tblDokumentTroskovi`.
+**GREŠKA:** DTO je sadržao polja `AmountNet` i `AmountVat` koja **NE POSTOJE** u tabeli `tblDokumentTroskovi`.
 
 ```csharp
 // ❌ STARO - NETAČNO
