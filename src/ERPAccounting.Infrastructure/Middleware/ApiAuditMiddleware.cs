@@ -95,8 +95,8 @@ namespace ERPAccounting.Infrastructure.Middleware
                     responseBody.Seek(0, SeekOrigin.Begin);
                     using (var reader = new StreamReader(responseBody))
                     {
-                        // Loguj samo za error responses ili za debugging
-                        if (!auditLog.IsSuccess)
+                        // Loguj samo za error responses (IsSuccess == false)
+                        if (auditLog.IsSuccess == false)
                         {
                             auditLog.ResponseBody = await reader.ReadToEndAsync();
                         }
