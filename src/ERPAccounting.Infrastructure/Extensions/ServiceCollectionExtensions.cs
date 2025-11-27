@@ -16,6 +16,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // NOVO: Registruj HttpContextAccessor za deljenje audit log ID-a
+        services.AddHttpContextAccessor();
+
         // Database
         services.AddDbContext<AppDbContext>(options =>
             ConfigureDatabase(options, configuration));
