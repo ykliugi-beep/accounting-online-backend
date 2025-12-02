@@ -41,6 +41,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5174"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .WithExposedHeaders("ETag", "X-Total-Count", "Location")
+            .AllowCredentials();
+    });
+});
+
 // Add services to the container with global filters and JSON options
 builder.Services.AddControllers(options =>
 {
@@ -67,6 +84,8 @@ builder.Services.AddControllers(options =>
     
     // Write numbers as strings to preserve precision
     options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -131,6 +150,8 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ApiAuditMiddleware>();
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFrontend");
 
 // Obavezno dodaj autentifikaciju i autorizaciju pre MapControllers
 app.UseAuthentication();
