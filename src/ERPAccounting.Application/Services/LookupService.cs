@@ -21,6 +21,10 @@ public class LookupService : ILookupService
         _storedProcedureGateway = storedProcedureGateway;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // ORIGINAL METHODS (Stored Procedures)
+    // ═══════════════════════════════════════════════════════════════
+
     public async Task<List<PartnerComboDto>> GetPartnerComboAsync()
     {
         var partners = await _storedProcedureGateway.GetPartnerComboAsync();
@@ -92,7 +96,39 @@ public class LookupService : ILookupService
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // MAPPING FUNCTIONS – align domain lookup models to application DTOs
+    // 🆕 NEW METHODS - Server-Side Search
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Pretraga partnera po šifri ili nazivu (server-side filtering).
+    /// </summary>
+    public async Task<List<PartnerComboDto>> SearchPartnersAsync(string searchTerm, int limit = 50)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm) || searchTerm.Length < 2)
+        {
+            return new List<PartnerComboDto>();
+        }
+
+        var partners = await _storedProcedureGateway.SearchPartnersAsync(searchTerm, limit);
+        return partners.Select(MapToPartnerDto).ToList();
+    }
+
+    /// <summary>
+    /// Pretraga artikala po šifri ili nazivu (server-side filtering).
+    /// </summary>
+    public async Task<List<ArticleComboDto>> SearchArticlesAsync(string searchTerm, int limit = 50)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm) || searchTerm.Length < 2)
+        {
+            return new List<ArticleComboDto>();
+        }
+
+        var articles = await _storedProcedureGateway.SearchArticlesAsync(searchTerm, limit);
+        return articles.Select(MapToArticleDto).ToList();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MAPPING FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
 
     private static PartnerComboDto MapToPartnerDto(PartnerLookup source) => new(

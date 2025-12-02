@@ -22,4 +22,15 @@ public interface IStoredProcedureGateway
     Task<List<CostTypeLookup>> GetCostTypesComboAsync();
     Task<List<CostDistributionMethodLookup>> GetCostDistributionMethodsComboAsync();
     Task<List<CostArticleLookup>> GetCostArticlesComboAsync(int documentId);
+
+    // 🆕 NEW - Server-Side Search Methods
+    /// <summary>
+    /// Search partners by code or name (server-side filtering).
+    /// </summary>
+    Task<List<PartnerLookup>> SearchPartnersAsync(string searchTerm, int limit);
+
+    /// <summary>
+    /// Search articles by code or name (server-side filtering).
+    /// </summary>
+    Task<List<ArticleLookup>> SearchArticlesAsync(string searchTerm, int limit);
 }

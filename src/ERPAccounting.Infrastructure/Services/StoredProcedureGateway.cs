@@ -232,4 +232,104 @@ public class StoredProcedureGateway : IStoredProcedureGateway
                 "Greška pri izvršavanju spDokumentTroskoviArtikliCOMBO", ex);
         }
     }
+
+    // ═══════════════════════════════════════════════════════
+    // 🆕 NEW METHODS - Server-Side Search
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Search partners using spPartnerSearch stored procedure.
+    /// </summary>
+    public async Task<List<PartnerLookup>> SearchPartnersAsync(string searchTerm, int limit)
+    {
+        try
+        {
+            return await _context.Database
+                .SqlQueryRaw<PartnerLookup>(
+                    @"DECLARE @result TABLE (
+                            IdPartner INT,
+                            NazivPartnera NVARCHAR(100),
+                            Mesto NVARCHAR(100),
+                            Opis NVARCHAR(250),
+                            IdStatus INT,
+                            IdNacinOporezivanjaNabavka CHAR(2),
+                            ObracunAkciza BIT,
+                            ObracunPorez BIT,
+                            IdReferent INT,
+                            SifraPartner VARCHAR(255)
+                        );
+
+                        INSERT INTO @result
+                        EXEC spPartnerSearch @SearchTerm = {0}, @Limit = {1};
+
+                        SELECT IdPartner,
+                               NazivPartnera,
+                               Mesto,
+                               Opis,
+                               IdStatus,
+                               IdNacinOporezivanjaNabavka,
+                               ObracunAkciza,
+                               ObracunPorez,
+                               IdReferent,
+                               SifraPartner
+                        FROM @result;",
+                    searchTerm,
+                    limit)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Greška pri izvršavanju spPartnerSearch", ex);
+        }
+    }
+
+    /// <summary>
+    /// Search articles using spArticleSearch stored procedure.
+    /// </summary>
+    public async Task<List<ArticleLookup>> SearchArticlesAsync(string searchTerm, int limit)
+    {
+        try
+        {
+            return await _context.Database
+                .SqlQueryRaw<ArticleLookup>(
+                    @"DECLARE @result TABLE (
+                            IdArtikal INT,
+                            SifraArtikal NVARCHAR(100),
+                            NazivArtikla NVARCHAR(255),
+                            JedinicaMere VARCHAR(6),
+                            IdPoreskaStopa CHAR(2),
+                            ProcenatPoreza FLOAT,
+                            Akciza DECIMAL(19,4),
+                            KoeficijentKolicine DECIMAL(19,4),
+                            ImaLot BIT,
+                            OtkupnaCena DECIMAL(19,4) NULL,
+                            PoljoprivredniProizvod BIT
+                        );
+
+                        INSERT INTO @result
+                        EXEC spArticleSearch @SearchTerm = {0}, @Limit = {1};
+
+                        SELECT IdArtikal,
+                               SifraArtikal,
+                               NazivArtikla,
+                               JedinicaMere,
+                               IdPoreskaStopa,
+                               ProcenatPoreza,
+                               Akciza,
+                               KoeficijentKolicine,
+                               ImaLot,
+                               OtkupnaCena,
+                               PoljoprivredniProizvod
+                        FROM @result;",
+                    searchTerm,
+                    limit)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Greška pri izvršavanju spArticleSearch", ex);
+        }
+    }
 }

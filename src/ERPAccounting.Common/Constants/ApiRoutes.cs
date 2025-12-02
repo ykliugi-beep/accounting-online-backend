@@ -12,12 +12,14 @@ public static class ApiRoutes
     {
         public const string Base = "api/v1/lookups";
         public const string Partners = "partners";
+        public const string PartnersSearch = "partners/search";  // 🆕 NEW
         public const string OrganizationalUnits = "organizational-units";
         public const string TaxationMethods = "taxation-methods";
         public const string Referents = "referents";
         public const string DocumentsNd = "documents-nd";
         public const string TaxRates = "tax-rates";
         public const string Articles = "articles";
+        public const string ArticlesSearch = "articles/search";  // 🆕 NEW
         public const string DocumentCosts = "document-costs/{documentId:int}";
         public const string CostTypes = "cost-types";
         public const string CostDistributionMethods = "cost-distribution-methods";

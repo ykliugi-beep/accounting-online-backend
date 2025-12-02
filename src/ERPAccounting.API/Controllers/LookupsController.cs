@@ -12,7 +12,7 @@ namespace ERPAccounting.API.Controllers
 {
     /// <summary>
     /// Lookup Controller - Svi combo endpointi za popunjavanje dropdowns
-    /// Koristi 11 Stored Procedures iz baze
+    /// Koristi 11 Stored Procedures iz baze + 2 nova search endpoint-a
     /// </summary>
     [ApiController]
     [Route(ApiRoutes.Lookups.Base)]
@@ -29,6 +29,10 @@ namespace ERPAccounting.API.Controllers
             _lookupService = lookupService;
             _logger = logger;
         }
+
+        // ═══════════════════════════════════════════════════════
+        // ORIGINAL ENDPOINTS (Stored Procedures)
+        // ═══════════════════════════════════════════════════════
 
         [HttpGet(ApiRoutes.Lookups.Partners)]
         [ProducesResponseType(typeof(List<PartnerComboDto>), StatusCodes.Status200OK)]
@@ -94,6 +98,104 @@ namespace ERPAccounting.API.Controllers
         [ProducesResponseType(typeof(List<CostArticleComboDto>), StatusCodes.Status200OK)]
         public Task<ActionResult<List<CostArticleComboDto>>> GetCostArticles(int documentId)
             => ExecuteLookupAsync(() => _lookupService.GetCostArticlesComboAsync(documentId), "artikala za troškove");
+
+        // ═══════════════════════════════════════════════════════
+        // 🆕 NEW ENDPOINTS - Server-Side Search
+        // ═══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Server-side search za partnere (autocomplete).
+        /// Koristi se za velike dataset-e (6000+ records).
+        /// </summary>
+        /// <param name="query">Search term (minimum 2 karaktera)</param>
+        /// <param name="limit">Max broj rezultata (default: 50, max: 100)</param>
+        [HttpGet(ApiRoutes.Lookups.PartnersSearch)]
+        [ProducesResponseType(typeof(List<PartnerComboDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<List<PartnerComboDto>>> SearchPartners(
+            [FromQuery] string query,
+            [FromQuery] int limit = 50)
+        {
+            // Validacija
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest(new { message = "Query parameter is required" });
+            }
+
+            if (query.Length < 2)
+            {
+                return BadRequest(new { message = "Query must be at least 2 characters" });
+            }
+
+            if (limit < 1 || limit > 100)
+            {
+                return BadRequest(new { message = "Limit must be between 1 and 100" });
+            }
+
+            try
+            {
+                var result = await _lookupService.SearchPartnersAsync(query, limit);
+                _logger.LogInformation(
+                    "Partner search: '{Query}' returned {Count} results",
+                    query,
+                    result.Count);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching partners with query: '{Query}'", query);
+                throw CreateLookupException("pretraga partnera", ex);
+            }
+        }
+
+        /// <summary>
+        /// Server-side search za artikle (autocomplete).
+        /// Koristi se za velike dataset-e (11000+ records).
+        /// </summary>
+        /// <param name="query">Search term (minimum 2 karaktera)</param>
+        /// <param name="limit">Max broj rezultata (default: 50, max: 100)</param>
+        [HttpGet(ApiRoutes.Lookups.ArticlesSearch)]
+        [ProducesResponseType(typeof(List<ArticleComboDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<List<ArticleComboDto>>> SearchArticles(
+            [FromQuery] string query,
+            [FromQuery] int limit = 50)
+        {
+            // Validacija
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest(new { message = "Query parameter is required" });
+            }
+
+            if (query.Length < 2)
+            {
+                return BadRequest(new { message = "Query must be at least 2 characters" });
+            }
+
+            if (limit < 1 || limit > 100)
+            {
+                return BadRequest(new { message = "Limit must be between 1 and 100" });
+            }
+
+            try
+            {
+                var result = await _lookupService.SearchArticlesAsync(query, limit);
+                _logger.LogInformation(
+                    "Article search: '{Query}' returned {Count} results",
+                    query,
+                    result.Count);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching articles with query: '{Query}'", query);
+                throw CreateLookupException("pretraga artikala", ex);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // HELPER METHODS
+        // ═══════════════════════════════════════════════════════
 
         private async Task<ActionResult<List<T>>> ExecuteLookupAsync<T>(Func<Task<List<T>>> action, string resourceName)
         {
