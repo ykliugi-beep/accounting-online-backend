@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,7 +41,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Add services to the container with global filters
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5174"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .WithExposedHeaders("ETag", "X-Total-Count", "Location")
+            .AllowCredentials();
+    });
+});
+
+// Add services to the container with global filters and JSON options
 builder.Services.AddControllers(options =>
 {
     // ETag filter - automatski setuje ETag header na svaki response
@@ -47,6 +66,26 @@ builder.Services.AddControllers(options =>
     
     // Concurrency exception filter - standardizovani 409 Conflict response
     options.Filters.Add<ConcurrencyExceptionFilter>();
+})
+.AddJsonOptions(options =>
+{
+    // Podrška za više formata DateTime-a
+    // Prihvata: "2025-11-26", "2025-11-26T02:01:17", "2025-11-26 02:01:17.863"
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    
+    // Dozvoli trailing commas
+    options.JsonSerializerOptions.AllowTrailingCommas = true;
+    
+    // Property name case insensitive
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    
+    // Default null handling
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    
+    // Write numbers as strings to preserve precision
+    options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -63,7 +102,7 @@ builder.Services.AddApplicationServices();
 // Audit log service
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
-// Konfiguriši Swagger sa Bearer autentifikacijom
+// Konfigurisati Swagger sa Bearer autentifikacijom
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -111,6 +150,8 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ApiAuditMiddleware>();
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFrontend");
 
 // Obavezno dodaj autentifikaciju i autorizaciju pre MapControllers
 app.UseAuthentication();

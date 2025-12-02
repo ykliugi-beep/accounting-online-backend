@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
-using ERPAccounting.API.Helpers;
 using ERPAccounting.Application.DTOs.Costs;
 using ERPAccounting.Application.Services;
-using ERPAccounting.Common.Models;
 using ERPAccounting.Common.Exceptions;
+using ERPAccounting.Common.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -73,26 +71,43 @@ namespace ERPAccounting.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Ažurira zaglavlje zavisnog troška
+        /// </summary>
+        /// <param name="documentId">ID dokumenta</param>
+        /// <param name="costId">ID troška</param>
+        /// <param name="ifMatch">ETag vrednost iz prethodnog GET poziva (obavezno za concurrency control)</param>
+        /// <param name="dto">Podaci za ažuriranje</param>
+        /// <returns>Ažurirani trošak</returns>
         [HttpPut("{costId:int}")]
         [ProducesResponseType(typeof(DocumentCostDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<ActionResult<DocumentCostDto>> UpdateCost(int documentId, int costId, [FromBody] UpdateDocumentCostDto dto)
+        public async Task<ActionResult<DocumentCostDto>> UpdateCost(
+            int documentId, 
+            int costId, 
+            [FromHeader(Name = "If-Match")] string ifMatch,
+            [FromBody] UpdateDocumentCostDto dto)
         {
             try
             {
-                if (!IfMatchHeaderParser.TryExtractRowVersion(
-                        HttpContext,
-                        _logger,
-                        "document cost update",
-                        out var expectedRowVersion,
-                        out var problemDetails))
+                if (string.IsNullOrWhiteSpace(ifMatch))
                 {
-                    return BadRequest(problemDetails);
+                    return BadRequest(new { message = "Missing If-Match header. Use ETag from GET request." });
                 }
 
-                var updated = await _costService.UpdateCostAsync(documentId, costId, expectedRowVersion!, dto);
+                byte[]? expectedRowVersion;
+                try
+                {
+                    expectedRowVersion = Convert.FromBase64String(ifMatch.Trim('"'));
+                }
+                catch (FormatException)
+                {
+                    return BadRequest(new { message = "Invalid If-Match format. Must be Base64 encoded ETag value." });
+                }
+
+                var updated = await _costService.UpdateCostAsync(documentId, costId, expectedRowVersion, dto);
                 Response.Headers["ETag"] = $"\"{updated.ETag}\"";
                 return Ok(updated);
             }
@@ -103,7 +118,7 @@ namespace ERPAccounting.API.Controllers
             }
             catch (ConflictException)
             {
-                return Conflict(new { message = "Trošak je promenjen od strane drugog korisnika" });
+                return Conflict(new { message = "Trošak je promenjen od strane drugog korisnika. Osvežite podatke i pokušajte ponovo." });
             }
             catch (NotFoundException)
             {
@@ -165,26 +180,45 @@ namespace ERPAccounting.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Ažurira stavku zavisnog troška (PATCH - parcijalno ažuriranje)
+        /// </summary>
+        /// <param name="documentId">ID dokumenta</param>
+        /// <param name="costId">ID troška</param>
+        /// <param name="itemId">ID stavke troška</param>
+        /// <param name="ifMatch">ETag vrednost iz prethodnog GET poziva (obavezno za concurrency control)</param>
+        /// <param name="dto">Podaci za ažuriranje (samo promenjena polja)</param>
+        /// <returns>Ažurirana stavka troška</returns>
         [HttpPatch("{costId:int}/items/{itemId:int}")]
         [ProducesResponseType(typeof(DocumentCostItemDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<ActionResult<DocumentCostItemDto>> UpdateCostItem(int documentId, int costId, int itemId, [FromBody] PatchDocumentCostItemDto dto)
+        public async Task<ActionResult<DocumentCostItemDto>> UpdateCostItem(
+            int documentId, 
+            int costId, 
+            int itemId, 
+            [FromHeader(Name = "If-Match")] string ifMatch,
+            [FromBody] PatchDocumentCostItemDto dto)
         {
             try
             {
-                if (!IfMatchHeaderParser.TryExtractRowVersion(
-                        HttpContext,
-                        _logger,
-                        "document cost item PATCH",
-                        out var expectedRowVersion,
-                        out var problemDetails))
+                if (string.IsNullOrWhiteSpace(ifMatch))
                 {
-                    return BadRequest(problemDetails);
+                    return BadRequest(new { message = "Missing If-Match header. Use ETag from GET request." });
                 }
 
-                var updated = await _costService.UpdateCostItemAsync(documentId, costId, itemId, expectedRowVersion!, dto);
+                byte[]? expectedRowVersion;
+                try
+                {
+                    expectedRowVersion = Convert.FromBase64String(ifMatch.Trim('"'));
+                }
+                catch (FormatException)
+                {
+                    return BadRequest(new { message = "Invalid If-Match format. Must be Base64 encoded ETag value." });
+                }
+
+                var updated = await _costService.UpdateCostItemAsync(documentId, costId, itemId, expectedRowVersion, dto);
                 Response.Headers["ETag"] = $"\"{updated.ETag}\"";
                 return Ok(updated);
             }
@@ -195,7 +229,7 @@ namespace ERPAccounting.API.Controllers
             }
             catch (ConflictException)
             {
-                return Conflict(new { message = "Stavka troška je promenjena" });
+                return Conflict(new { message = "Stavka troška je promenjena od strane drugog korisnika. Osvežite podatke i pokušajte ponovo." });
             }
             catch (NotFoundException)
             {

@@ -26,58 +26,31 @@ public class DocumentCostRepository : IDocumentCostRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<DocumentCost?> GetAsync(int documentId, int costId, bool track = false, CancellationToken cancellationToken = default)
-    {
-        if (track)
-        {
-            return await _context.DocumentCosts
-                .AsTracking()
-                .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-
-        IQueryable<DocumentCost> query = _context.DocumentCosts;
-
-        // Avoid loading child collections on tracked queries to prevent marking the full graph as modified
-        // when only the header needs updating.
-        if (includeChildren && !track)
-        {
-            query = query
-                .Include(cost => cost.CostLineItems)
-                    .ThenInclude(item => item.VATItems)
-                .AsNoTracking();
-        }
-
-        return await query
-            .AsNoTracking()
-            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<DocumentCost?> GetDetailedAsync(
+    /// <summary>
+    /// KRITIČNA ISPRAVKA: Pravilna primena track parametra.
+    /// </summary>
+    public async Task<DocumentCost?> GetAsync(
         int documentId,
         int costId,
         bool track = false,
+        bool includeChildren = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.DocumentCosts
-            .Include(cost => cost.CostLineItems)
-                .ThenInclude(item => item.VATItems)
-            .AsSplitQuery()
-            .AsQueryable();
+        IQueryable<DocumentCost> query = _context.DocumentCosts
+            .Where(cost => cost.IDDokumentTroskovi == costId && cost.IDDokument == documentId);
 
-        if (track)
+        // ✅ FIX: Include children nezavisno od track parametra
+        if (includeChildren)
         {
-            return await query
-                .AsTracking()
-                .FirstOrDefaultAsync(cancellationToken);
+            query = query
+                .Include(cost => cost.CostLineItems)
+                    .ThenInclude(item => item.VATItems);
         }
 
-        return await query
-            .Include(cost => cost.CostLineItems)
-                .ThenInclude(item => item.VATItems)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(cancellationToken);
+        // ✅ FIX: Primeni tracking JEDNOM na osnovu track parametra
+        query = track ? query : query.AsNoTracking();
+
+        return await query.FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task AddAsync(DocumentCost entity, CancellationToken cancellationToken = default)
