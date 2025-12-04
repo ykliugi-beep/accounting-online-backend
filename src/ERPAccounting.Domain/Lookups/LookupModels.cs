@@ -3,6 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ERPAccounting.Domain.Lookups;
 
 // SP 1: spPartnerComboStatusNabavka
+// Returns: NAZIV PARTNERA, MESTO, IDPartner, Opis, IDStatus, 
+//          IDNacinOporezivanjaNabavka, ObracunAkciza, ObracunPorez, IDReferent, ŠIFRA
 public record PartnerLookup(
     [property: Column("IDPartner")] int IdPartner,
     [property: Column("NAZIV PARTNERA")] string NazivPartnera,
@@ -17,6 +19,7 @@ public record PartnerLookup(
 );
 
 // SP 2: spOrganizacionaJedinicaCombo
+// Returns: IDOrganizacionaJedinica, NAZIV MAGACINA, MESTO, SifraOrganizacionaJedinica
 public record OrgUnitLookup(
     [property: Column("IDOrganizacionaJedinica")] int IdOrganizacionaJedinica,
     [property: Column("NAZIV MAGACINA")] string Naziv,
@@ -25,6 +28,7 @@ public record OrgUnitLookup(
 );
 
 // SP 3: spNacinOporezivanjaComboNabavka
+// Returns: IDNacinOporezivanja, Opis, ObracunAkciza, ObracunPorez, ObracunPorezPomocni
 public record TaxationMethodLookup(
     [property: Column("IDNacinOporezivanja")] int IdNacinOporezivanja,
     [property: Column("Opis")] string Opis,
@@ -34,7 +38,7 @@ public record TaxationMethodLookup(
 );
 
 // SP 4: spReferentCombo
-// FIX: Changed property name from ImeRadnika to ImePrezime to match SQL alias "IME I PREZIME"
+// Returns: IDRadnik, ImeRadnika as [IME I PREZIME], SifraRadnika
 public record ReferentLookup(
     [property: Column("IDRadnik")] int IdRadnik,
     [property: Column("IME I PREZIME")] string ImePrezime,
@@ -42,6 +46,7 @@ public record ReferentLookup(
 );
 
 // SP 5: spDokumentNDCombo
+// Returns: IDDokument, BrojDokumenta, Datum, NazivPartnera
 public record DocumentNDLookup(
     [property: Column("IDDokument")] int IdDokument,
     [property: Column("BrojDokumenta")] string BrojDokumenta,
@@ -50,21 +55,24 @@ public record DocumentNDLookup(
 );
 
 // SP 6: spPoreskaStopaCombo
-// FIX: Added ProcenatPoreza field
+// Returns: IDPoreskaStopa, Naziv (ONLY 2 columns!)
+// NOTE: ProcenatPoreza is NOT returned by this SP, only by spArtikalComboUlaz
 public record TaxRateLookup(
     [property: Column("IDPoreskaStopa")] string IdPoreskaStopa,
-    [property: Column("Naziv")] string Naziv,
-    [property: Column("ProcenatPoreza")] double ProcenatPoreza
+    [property: Column("Naziv")] string Naziv
+    // ProcenatPoreza - REMOVED: Not in SP output
 );
 
 // SP 7: spArtikalComboUlaz
+// Returns: IDArtikal, SIFRA, NAZIV ARTIKLA, JM, IDPoreskaStopa, ProcenatPoreza,
+//          Akciza, KoeficijentKolicine, ImaLot, OtkupnaCena, PoljoprivredniProizvod
 public record ArticleLookup(
     [property: Column("IDArtikal")] int IdArtikal,
     [property: Column("SIFRA")] string SifraArtikal,
     [property: Column("NAZIV ARTIKLA")] string NazivArtikla,
     [property: Column("JM")] string? JedinicaMere,
     [property: Column("IDPoreskaStopa")] string? IdPoreskaStopa,
-    [property: Column("ProcenatPoreza")] double ProcenatPoreza,
+    [property: Column("ProcenatPoreza")] double ProcenatPoreza,  // Available HERE from JOIN
     [property: Column("Akciza", TypeName = "money")] decimal Akciza,
     [property: Column("KoeficijentKolicine", TypeName = "money")] decimal KoeficijentKolicine,
     [property: Column("ImaLot")] bool ImaLot,
@@ -73,6 +81,7 @@ public record ArticleLookup(
 );
 
 // SP 8: spDokumentTroskoviLista
+// Returns: IDDokumentTroskovi, IDDokumentTroskoviStavka, LISTA ZAVISNIH TROSKOVA, OSNOVICA, PDV
 public record DocumentCostLookup(
     [property: Column("IDDokumentTroskovi")] int IdDokumentTroskovi,
     [property: Column("IDDokumentTroskoviStavka")] int? IdDokumentTroskoviStavka,
@@ -82,7 +91,7 @@ public record DocumentCostLookup(
 );
 
 // SP 9: spUlazniRacuniIzvedeniTroskoviCombo
-// ObracunPorez is an int to match the stored procedure output and avoid InvalidCastException.
+// Returns: IDUlazniRacuniIzvedeni, Naziv, Opis, NazivSpecifikacije, ObracunPorez, IDUlazniRacuniOsnovni
 public record CostTypeLookup(
     [property: Column("IDUlazniRacuniIzvedeni")] int IdUlazniRacuniIzvedeni,
     [property: Column("Naziv")] string Naziv,
@@ -93,6 +102,7 @@ public record CostTypeLookup(
 );
 
 // SP 10: spNacinDeljenjaTroskovaCombo
+// Returns: IDNacinDeljenjaTroskova, Naziv, OpisNacina
 public record CostDistributionMethodLookup
 {
     [Column("IDNacinDeljenjaTroskova")]
@@ -106,6 +116,7 @@ public record CostDistributionMethodLookup
 }
 
 // SP 11: spDokumentTroskoviArtikliCOMBO
+// Returns: IDStavkaDokumenta, SifraArtikal, NazivArtikla
 public record CostArticleLookup(
     [property: Column("IDStavkaDokumenta")] int IdStavkaDokumenta,
     [property: Column("SifraArtikal")] string SifraArtikal,
