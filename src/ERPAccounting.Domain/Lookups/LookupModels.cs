@@ -34,9 +34,10 @@ public record TaxationMethodLookup(
 );
 
 // SP 4: spReferentCombo
+// FIX: Changed property name from ImeRadnika to ImePrezime to match SQL alias "IME I PREZIME"
 public record ReferentLookup(
     [property: Column("IDRadnik")] int IdRadnik,
-    [property: Column("IME I PREZIME")] string ImeRadnika,
+    [property: Column("IME I PREZIME")] string ImePrezime,
     [property: Column("SifraRadnika")] string? SifraRadnika
 );
 
@@ -49,9 +50,11 @@ public record DocumentNDLookup(
 );
 
 // SP 6: spPoreskaStopaCombo
+// FIX: Added ProcenatPoreza field
 public record TaxRateLookup(
     [property: Column("IDPoreskaStopa")] string IdPoreskaStopa,
-    [property: Column("Naziv")] string Naziv
+    [property: Column("Naziv")] string Naziv,
+    [property: Column("ProcenatPoreza")] double ProcenatPoreza
 );
 
 // SP 7: spArtikalComboUlaz

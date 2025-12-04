@@ -32,9 +32,10 @@ public record TaxationMethodComboDto(
 );
 
 // SP 4: spReferentCombo
+// FIX: Changed from ImeRadnika to ImePrezime to match SQL column alias "IME I PREZIME"
 public record ReferentComboDto(
     int IdRadnik,
-    string ImeRadnika,
+    string ImePrezime,
     string? SifraRadnika
 );
 
@@ -47,9 +48,11 @@ public record DocumentNDComboDto(
 );
 
 // SP 6: spPoreskaStopaCombo
+// FIX: Added ProcenatPoreza field for tax rate percentage display
 public record TaxRateComboDto(
     string IdPoreskaStopa,
-    string Naziv
+    string Naziv,
+    double ProcenatPoreza
 );
 
 // SP 7: spArtikalComboUlaz
