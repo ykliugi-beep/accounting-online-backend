@@ -110,7 +110,7 @@ public class StoredProcedureService : IStoredProcedureService
 
     private static ReferentComboDto MapToReferentDto(ReferentLookup source) => new(
         source.IdRadnik,
-        source.ImeRadnika,
+        source.ImePrezime,
         source.SifraRadnika
     );
 
@@ -123,7 +123,8 @@ public class StoredProcedureService : IStoredProcedureService
 
     private static TaxRateComboDto MapToTaxRateDto(TaxRateLookup source) => new(
         source.IdPoreskaStopa,
-        source.Naziv
+        source.Naziv,
+        source.ProcenatPoreza
     );
 
     private static ArticleComboDto MapToArticleDto(ArticleLookup source) => new(
