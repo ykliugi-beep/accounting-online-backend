@@ -123,92 +123,38 @@ public class DocumentService : IDocumentService
 
     /// <summary>
     /// Pretraga dokumenata sa naprednijim filterima
+    /// Napomena: Ova implementacija koristi GetPaginatedAsync sa search parametrom
+    /// Za kompleksnije filtere, trebalo bi refaktorisati na IQueryable<> pristup
     /// </summary>
     public async Task<DocumentSearchResultDto> SearchDocumentsAsync(DocumentSearchDto searchDto)
     {
         ArgumentNullException.ThrowIfNull(searchDto);
 
-        // Počni sa svim dokumentima
-        var query = await _documentRepository.GetAllAsync();
-
-        // Primeni filtere
-        if (!string.IsNullOrWhiteSpace(searchDto.DocumentNumber))
-        {
-            query = query.Where(d => d.BrojDokumenta != null && d.BrojDokumenta.Contains(searchDto.DocumentNumber));
-        }
-
-        if (searchDto.PartnerId.HasValue)
-        {
-            query = query.Where(d => d.IDPartner == searchDto.PartnerId.Value);
-        }
-
-        if (searchDto.DateFrom.HasValue)
-        {
-            query = query.Where(d => d.Datum >= searchDto.DateFrom.Value);
-        }
-
-        if (searchDto.DateTo.HasValue)
-        {
-            query = query.Where(d => d.Datum <= searchDto.DateTo.Value);
-        }
-
-        if (searchDto.StatusId.HasValue)
-        {
-            query = query.Where(d => d.IDStatus == searchDto.StatusId.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(searchDto.DocumentTypeCode))
-        {
-            query = query.Where(d => d.IDVrstaDokumenta == searchDto.DocumentTypeCode);
-        }
-
-        // Ukupan broj pre paginacije
-        var totalCount = query.Count();
-
-        // Sortiranje
-        query = ApplySorting(query, searchDto.SortBy, searchDto.SortDirection);
-
-        // Paginacija
-        var items = query
-            .Skip((searchDto.PageNumber - 1) * searchDto.PageSize)
-            .Take(searchDto.PageSize)
-            .ToList();
+        // Privremena implementacija: koristi GetPaginatedAsync sa dokumentnim brojem
+        // TODO: Refaktorisati na IQueryable<> za kompleksne filtere (partner, datum, status, itd.)
+        
+        var searchTerm = searchDto.DocumentNumber ?? string.Empty;
+        
+        var (items, totalCount) = await _documentRepository.GetPaginatedAsync(
+            searchDto.PageNumber,
+            searchDto.PageSize,
+            searchTerm);
 
         var documentDtos = _mapper.Map<List<DocumentDto>>(items);
+
+        var totalPages = (totalCount + searchDto.PageSize - 1) / searchDto.PageSize;
+        var hasPreviousPage = searchDto.PageNumber > 1;
+        var hasNextPage = searchDto.PageNumber < totalPages;
 
         return new DocumentSearchResultDto
         {
             Documents = documentDtos,
             TotalCount = totalCount,
             PageNumber = searchDto.PageNumber,
-            PageSize = searchDto.PageSize
-        };
-    }
-
-    /// <summary>
-    /// Primenjuje sortiranje na query
-    /// </summary>
-    private static IEnumerable<Document> ApplySorting(IEnumerable<Document> query, string? sortBy, string? sortDirection)
-    {
-        var isDescending = sortDirection?.ToLower() == "desc";
-
-        return (sortBy?.ToLower()) switch
-        {
-            "documentnumber" => isDescending 
-                ? query.OrderByDescending(d => d.BrojDokumenta) 
-                : query.OrderBy(d => d.BrojDokumenta),
-            "documentdate" or "date" => isDescending 
-                ? query.OrderByDescending(d => d.Datum) 
-                : query.OrderBy(d => d.Datum),
-            "partner" => isDescending 
-                ? query.OrderByDescending(d => d.IDPartner) 
-                : query.OrderBy(d => d.IDPartner),
-            "status" => isDescending 
-                ? query.OrderByDescending(d => d.IDStatus) 
-                : query.OrderBy(d => d.IDStatus),
-            _ => isDescending 
-                ? query.OrderByDescending(d => d.Datum) 
-                : query.OrderBy(d => d.Datum) // Default: sort by date
+            PageSize = searchDto.PageSize,
+            TotalPages = totalPages,
+            HasPreviousPage = hasPreviousPage,
+            HasNextPage = hasNextPage
         };
     }
 
