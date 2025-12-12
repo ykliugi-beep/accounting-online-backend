@@ -36,26 +36,17 @@ public class DocumentSearchResultDto
     /// Computed: Total number of pages available for the search results.
     /// Calculated as: (TotalCount + PageSize - 1) / PageSize
     /// </summary>
-    public int TotalPages
-    {
-        get => (TotalCount + PageSize - 1) / PageSize;
-    }
+    public int TotalPages => (TotalCount + PageSize - 1) / PageSize;
 
     /// <summary>
     /// Computed: Indicates if there is a previous page available.
     /// Calculated as: PageNumber > 1
     /// </summary>
-    public bool HasPreviousPage
-    {
-        get => PageNumber > 1;
-    }
+    public bool HasPreviousPage => PageNumber > 1;
 
     /// <summary>
     /// Computed: Indicates if there is a next page available.
     /// Calculated as: PageNumber < TotalPages
     /// </summary>
-    public bool HasNextPage
-    {
-        get => PageNumber < TotalPages;
-    }
+    public bool HasNextPage => PageNumber < TotalPages;
 }
